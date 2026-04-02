@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BSB - Authentication</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+    <style>
+        /* --- PREMIUM NATIVE UI --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            background: linear-gradient(180deg, #ffffff 0%, #f0f4f8 100%);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .auth-container {
+            width: 100%;
+            max-width: 450px;
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            padding: 6vh 20px 40px 20px;
+        }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header img { 
+            width: 110px; 
+            border-radius: 18px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08); 
+        }
+        .form-wrapper { display: grid; width: 100%; }
+        .form-card {
+            grid-area: 1 / 1;
+            background: white;
+            border-radius: 24px;
+            padding: 30px 25px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(40px);
+        }
+        .form-card.active { opacity: 1; visibility: visible; transform: translateX(0); }
+        .form-card.outgoing { transform: translateX(-40px); opacity: 0; visibility: hidden; }
+        .instruction-text { color: #546e7a; font-size: 14px; text-align: center; margin-bottom: 25px; line-height: 1.5; font-weight: 500; }
+        .input-group { margin-bottom: 18px; }
+        .input-group label { display: block; font-size: 13px; color: #78909c; margin-bottom: 6px; font-weight: bold; padding-left: 4px; }
+        .input-group input {
+            width: 100%; padding: 16px; border: 1.5px solid #eceff1;
+            border-radius: 14px; font-size: 16px; outline: none; background: #fcfdfe;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus { border-color: #1976d2; background: white; }
+        .primary-btn {
+            width: 100%; background: #1976d2; color: white; border: none; 
+            padding: 18px; border-radius: 14px; font-size: 18px; font-weight: bold;
+            cursor: pointer; margin-top: 10px; box-shadow: 0 6px 20px rgba(25,118,210,0.25);
+        }
+        .primary-btn:active { transform: scale(0.97); }
+        .toggle-link { text-align: center; margin-top: 25px; font-size: 14px; color: #90a4ae; }
+        .toggle-link span { color: #1976d2; font-weight: bold; cursor: pointer; padding: 5px; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="header">
+            <img src="logo.png" alt="BSB Logo" onerror="this.style.display='none'">
+        </div>
+        <div class="form-wrapper">
+            <div class="form-card" id="register-view">
+                <p class="instruction-text">আপনার মোবাইল নাম্বার এবং ৪ সংখ্যার গোপন পিন দিয়ে একাউন্ট তৈরি করুন</p>
+                <div class="input-group">
+                    <label>মোবাইল নাম্বার</label>
+                    <input type="tel" id="reg-phone" placeholder="017XXXXXXXX" maxlength="11" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                    <label>গোপন পিন</label>
+                    <input type="password" id="reg-pin" placeholder="••••" maxlength="4" inputmode="numeric">
+                </div>
+                <button class="primary-btn" id="reg-btn" onclick="handleRegister()">রেজিস্টার</button>
+                <div class="toggle-link">ইতোমধ্যে একাউন্ট আছে? <span onclick="switchView('login')">লগইন করুন</span></div>
+            </div>
+            
+            <div class="form-card" id="login-view">
+                <p class="instruction-text">আপনার নাম্বার এবং পিন দিয়ে লগইন করুন</p>
+                <div class="input-group">
+                    <label>মোবাইল নাম্বার</label>
+                    <input type="tel" id="log-phone" placeholder="017XXXXXXXX" maxlength="11" inputmode="numeric">
+                </div>
+                <div class="input-group">
+                    <label>গোপন পিন</label>
+                    <input type="password" id="log-pin" placeholder="••••" maxlength="4" inputmode="numeric">
+                </div>
+                <button class="primary-btn" id="log-btn" style="background:#2e7d32; box-shadow: 0 6px 20px rgba(46,125,50,0.25);" onclick="handleLogin()">লগইন</button>
+                <div class="toggle-link">একাউন্ট নেই? <span onclick="switchView('register')">রেজিস্টার করুন</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
+        const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
+        const supabase = window.supabase.createClient(S_URL, S_KEY);
+
+        window.onload = () => {
+            console.log("Database Connection initialized.");
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('view') === 'login') {
+                document.getElementById('login-view').classList.add('active');
+            } else {
+                document.getElementById('register-view').classList.add('active');
+            }
+        };
+
+        function switchView(target) {
+            const regView = document.getElementById('register-view');
+            const logView = document.getElementById('login-view');
+            if (target === 'login') {
+                regView.className = 'form-card outgoing';
+                logView.className = 'form-card active';
+            } else {
+                logView.className = 'form-card outgoing';
+                setTimeout(() => { logView.className = 'form-card'; }, 400); 
+                regView.className = 'form-card active';
+            }
+        }
+
+        async function handleRegister() {
+            const phone = document.getElementById('reg-phone').value;
+            const pin = document.getElementById('reg-pin').value;
+            if (phone.length !== 11 || pin.length !== 4) { alert("সঠিক ১১ ডিজিট নাম্বার ও ৪ ডিজিট পিন দিন।"); return; }
+            
+            const btn = document.getElementById('reg-btn');
+            btn.innerText = "অপেক্ষা করুন...";
+            btn.disabled = true;
+            
+            try {
+                // 1. Check if user exists in the unified PROFILES table
+                const { data: user, error: checkError } = await supabase.from('profiles').select('phone').eq('phone', phone).maybeSingle();
+                if (checkError) throw checkError;
+                if (user) { alert("এই নাম্বারটি আগে থেকেই নিবন্ধিত!"); return; }
+                
+                // 2. ONE INSERT TO RULE THEM ALL
+                const { error: insError } = await supabase.from('profiles').insert([{ 
+                    user_id: phone, 
+                    phone: phone, 
+                    pin: pin, 
+                    username: 'User_' + phone.slice(-4), 
+                    current_balance: 0 
+                }]);
+                
+                if (insError) throw insError;
+                
+                alert("✅ একাউন্ট তৈরি সফল!");
+                switchView('login');
+                document.getElementById('log-phone').value = phone;
+            } catch (e) { alert("ত্রুটি: " + e.message); }
+            finally { btn.innerText = "রেজিস্টার"; btn.disabled = false; }
+        }
+
+        async function handleLogin() {
+            const phone = document.getElementById('log-phone').value;
+            const pin = document.getElementById('log-pin').value;
+            const btn = document.getElementById('log-btn');
+            
+            btn.innerText = "যাচাই হচ্ছে...";
+            btn.disabled = true;
+            
+            try {
+                // Read directly from the unified PROFILES table
+                const { data: user, error } = await supabase.from('profiles').select('*').eq('phone', phone).eq('pin', pin).maybeSingle();
+                if (error) throw error;
+                if (!user) { alert("ভুল মোবাইল নাম্বার অথবা পিন!"); return; }
+                
+                // 🔥 THE FIX: Set the custom local token using user_id 🔥
+                localStorage.setItem('BSB_SESSION', user.user_id);
+                
+                // Teleport to dashboard
+                window.location.replace('dashboard.html');
+            } catch (e) { alert("ত্রুটি: " + e.message); }
+            finally { btn.innerText = "লগইন"; btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>

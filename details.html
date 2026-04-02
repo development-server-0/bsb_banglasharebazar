@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BSB - Pro Terminal</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #0b0e11; color: #eaecef; min-height: 100dvh; padding-bottom: 110px; overflow-x: hidden; }
+        
+        .header { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; background: #161a1e; border-bottom: 1px solid #2b2f36; position: sticky; top: 0; z-index: 100; }
+        .back-btn { font-size: 24px; color: #90a4ae; text-decoration: none; padding-right: 15px; }
+        .price-info { text-align: right; }
+        .price-info h2 { font-size: 22px; color: #00c087; transition: color 0.1s; margin-bottom: 2px; }
+        .price-change { font-size: 12px; font-weight: bold; }
+        .green { color: #00c087; } .red { color: #f84960; }
+        
+        .chart-container { background: #0b0e11; position: relative; height: 360px; width: 100%; border-bottom: 1px solid #23272c; touch-action: none; overscroll-behavior: none; }
+        #stockCanvas { width: 100%; height: 100%; display: block; touch-action: none; }
+        
+        .time-tabs { display: flex; background: #161a1e; padding: 10px 20px; gap: 20px; border-bottom: 1px solid #23272c; }
+        .tab { font-size: 13px; color: #848e9c; cursor: pointer; padding: 4px 8px; border-radius: 4px; transition: 0.3s; font-weight: 500; }
+        .tab.active { color: #f0b90b; background: rgba(240, 185, 11, 0.1); }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: #2b2f36; border-bottom: 1px solid #23272c; }
+        .stat-item { background: #161a1e; padding: 15px; }
+        .stat-item label { display: block; font-size: 10px; color: #848e9c; margin-bottom: 5px; text-transform: uppercase; }
+        .stat-item p { font-size: 15px; font-weight: bold; transition: color 0.2s; }
+        
+        .info-box { padding: 20px; border-bottom: 1px solid #23272c; background: #161a1e; }
+        .info-box h2 { font-size: 16px; color: #f0b90b; margin-bottom: 12px; }
+        .info-box p { font-size: 14px; color: #929aa5; line-height: 1.6; }
+        
+        .social-header { font-size: 12px; color: #848e9c; margin-bottom: 12px; letter-spacing: 0.5px; }
+        .social-row { display: flex; gap: 10px; }
+        .s-btn { flex: 1; padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; font-size: 12px; font-weight: bold; color: white; display:none; }
+        .fb { background: #1877f2; } .web { background: #2b2f36; border: 1px solid #3a3f45; } .yt { background: #ff0000; }
+        
+        .portfolio { border-top: 5px solid #0b0e11; background: #161a1e; padding: 0; margin-bottom: 20px; }
+        .port-tabs { display: flex; border-bottom: 1px solid #2b2f36; }
+        .p-tab { flex: 1; text-align: center; padding: 15px; font-size: 14px; font-weight: bold; color: #848e9c; border-bottom: 2px solid transparent; cursor: pointer; }
+        .p-tab.active { color: #f0b90b; border-bottom: 2px solid #f0b90b; background: rgba(240, 185, 11, 0.05); }
+        .port-content { padding: 20px; display: none; }
+        .port-content.active { display: block; }
+        
+        .holdings-card { background: #2b2f36; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .h-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+        .h-label { color: #848e9c; }
+        .h-val { font-weight: bold; }
+        .big-pnl { font-size: 18px; font-weight: bold; text-align: right; margin-top: 10px; padding-top: 10px; border-top: 1px solid #3a3f45; }
+        
+        .history-list { max-height: 300px; overflow-y: auto; }
+        .h-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #23272c; font-size: 12px; }
+        .h-item span { display: block; }
+        .h-type { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+        
+        .order-book { padding: 20px; margin-bottom: 10px; }
+        .order-book h3 { font-size: 12px; color: #848e9c; margin-bottom: 15px; letter-spacing: 1px; }
+        #trade-list { height: 180px; overflow: hidden; position: relative; }
+        .t-row { display: grid; grid-template-columns: 2fr 1fr 1.5fr; font-size: 13px; height: 35px; align-items: center; border-bottom: 1px solid #1f2329; animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .action-bar { position: fixed; bottom: 0; width: 100%; padding: 15px 20px; display: flex; flex-direction: column; gap: 10px; background: #161a1e; border-top: 1px solid #2b2f36; padding-bottom: calc(15px + env(safe-area-inset-bottom)); z-index: 1000; }
+        .balance-info { text-align: center; font-size: 12px; color: #848e9c; font-weight: bold; }
+        .balance-val { color: #f0b90b; }
+        .btn-row { display: flex; gap: 15px; }
+        .f-btn { flex: 1; height: 48px; border-radius: 12px; border: none; font-size: 16px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; }
+        .buy { background: #00c087; } .sell { background: #f84960; }
+        .f-btn:active { opacity: 0.8; transform: scale(0.96); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .modal-overlay.show { display: flex; opacity: 1; }
+        .modal-box { background: #161a1e; border: 1px solid #2b2f36; border-radius: 16px; padding: 25px; width: 90%; max-width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s; }
+        .modal-overlay.show .modal-box { transform: translateY(0); }
+        .modal-title { font-size: 18px; font-weight: bold; color: white; margin-bottom: 8px; text-align: center; }
+        .modal-desc { font-size: 13px; color: #848e9c; margin-bottom: 20px; text-align: center; }
+        .modal-input-group { background: #0b0e11; border: 1px solid #2b2f36; border-radius: 10px; padding: 10px; display: flex; align-items: center; margin-bottom: 10px; }
+        .modal-input-group span { color: #848e9c; padding-right: 10px; font-size: 14px; }
+        .modal-input-group input { flex: 1; background: transparent; border: none; color: white; font-size: 20px; font-weight: bold; outline: none; width: 100%; }
+        .modal-fee { text-align: center; font-size: 11px; color: #848e9c; margin-bottom: 5px; }
+        .modal-total { text-align: center; font-size: 14px; font-weight: bold; color: white; margin-bottom: 20px; }
+        .m-actions { display: flex; gap: 10px; }
+        .m-btn { flex: 1; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; color: white; }
+        .m-cancel { background: #2b2f36; }
+        .m-confirm.buy { background: #00c087; }
+        .m-confirm.sell { background: #f84960; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <a href="dashboard.html" class="back-btn">←</a>
+            <div>
+                <h1 id="ui-title" style="font-size:18px;">লোড হচ্ছে...</h1>
+                <span style="font-size:11px; color:#848e9c;" id="ui-cat">...</span>
+            </div>
+        </div>
+        <div class="price-info">
+            <h2 id="top-price">৳ 00.00</h2>
+            <div id="price-change" class="price-change green">+0.00%</div>
+        </div>
+    </div>
+
+    <div class="time-tabs">
+        <div class="tab active">1m</div>
+        <div class="tab">15m</div>
+        <div class="tab">1H</div>
+        <div class="tab">4H</div>
+        <div class="tab">1D</div>
+    </div>
+
+    <div class="chart-container"><canvas id="stockCanvas"></canvas></div>
+
+    <div class="stats-grid">
+        <div class="stat-item"><label>আজকের সর্বোচ্চ</label><p id="ui-high" class="green">৳ 0.00</p></div>
+        <div class="stat-item"><label>আজকের সর্বনিম্ন</label><p id="ui-low" class="red">৳ 0.00</p></div>
+        <div class="stat-item"><label>মাসিক বিনিয়োগ</label><p id="ui-inv">৳ 0.00</p></div>
+        <div class="stat-item"><label>মাসিক প্রফিট</label><p id="ui-prof">৳ 0.00</p></div>
+    </div>
+
+    <div class="info-box">
+        <h2>ব্যবসা সম্পর্কে</h2>
+        <p id="ui-desc">লোড হচ্ছে...</p>
+        <div id="social-container" style="display: none; margin-top: 25px; border-top: 1px solid #2b2f36; padding-top: 20px;">
+            <h3 class="social-header">এই ব্যবসা সম্পর্কে আরও জানুন</h3>
+            <div class="social-row">
+                <a href="#" id="ui-fb" class="s-btn fb">ফেসবুক</a>
+                <a href="#" id="ui-web" class="s-btn web">ওয়েবসাইট</a>
+                <a href="#" id="ui-yt" class="s-btn yt">ইউটিউব</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="order-book">
+        <h3>মার্কেট ট্রেডসমূহ</h3>
+        <div id="trade-list"></div>
+    </div>
+
+    <div class="portfolio">
+        <div class="port-tabs">
+            <div class="p-tab active" id="tab-btn-holdings" onclick="switchTab('holdings')">আমার অর্ডারসমূহ</div>
+            <div class="p-tab" id="tab-btn-history" onclick="switchTab('history')">অর্ডার ইতিহাস</div>
+        </div>
+        <div id="content-holdings" class="port-content active">
+            <div class="holdings-card">
+                <div class="h-row"><span class="h-label">মোট শেয়ার</span><span class="h-val" id="my-shares">0</span></div>
+                <div class="h-row"><span class="h-label">গড় ক্রয় মূল্য</span><span class="h-val" id="my-avg-price">৳ 0.00</span></div>
+                <div class="h-row"><span class="h-label">মোট বিনিয়োগ</span><span class="h-val" id="my-invested">৳ 0.00</span></div>
+                <div class="h-row"><span class="h-label">বর্তমান মূল্য</span><span class="h-val" id="my-current-val">৳ 0.00</span></div>
+                <div class="big-pnl" id="my-pnl">৳ 0.00 (0.00%)</div>
+            </div>
+        </div>
+        <div id="content-history" class="port-content">
+            <div class="history-list" id="my-history-list">
+                <div style="text-align:center; color:#848e9c; padding: 20px;">কোন ট্রেডিং ইতিহাস নেই।</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <div class="balance-info">অ্যাভেইলেবল ব্যালেন্স: <span class="balance-val" id="ui-balance">৳ 0.00</span></div>
+        <div class="btn-row">
+            <button class="f-btn buy" onclick="openModal('BUY')">কিনুন</button>
+            <button class="f-btn sell" onclick="openModal('SELL')">বিক্রি করুন</button>
+        </div>
+    </div>
+
+    <div id="trade-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-title" id="modal-title">শেয়ার কিনুন</div>
+            <div class="modal-desc" id="modal-desc">বর্তমান মূল্য: ৳ 0.00</div>
+            <div class="modal-input-group">
+                <span>পরিমাণ:</span>
+                <input type="number" id="modal-qty" min="1" value="1" oninput="calculateModalTotal()">
+            </div>
+            <div class="modal-fee" id="modal-fee-display">প্ল্যাটফর্ম ফি (০.৫%): ৳ 0.00</div>
+            <div class="modal-total" id="modal-total-display">সর্বমোট: ৳ 0.00</div>
+            <div class="m-actions">
+                <button class="m-btn m-cancel" onclick="closeModal()">বাতিল</button>
+                <button class="m-btn m-confirm" id="modal-confirm-btn">নিশ্চিত করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
+        const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
+        const supabase = window.supabase.createClient(S_URL, S_KEY);
+
+        const canvas = document.getElementById('stockCanvas');
+        const ctx = canvas.getContext('2d');
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetName = urlParams.get('name') || "Trend Fashion";
+        
+        // 🔥 CUSTOM AUTH GUARD
+        let SESSION_USER = localStorage.getItem('BSB_SESSION');
+
+        let bizData = null;
+        let currentPrice = 0;
+        let cloudHistory = [];
+        let activeCandle = null;
+        let candlesPerPage = 30; 
+        let currentMinute = new Date().getMinutes(); 
+        
+        let myTrades = [];
+        let totalHoldings = 0;
+        let currentBalance = 0;
+        let activeTradeType = 'BUY';
+
+        window.onload = async () => {
+            if (!SESSION_USER) {
+                window.location.replace("index.html"); 
+                return;
+            }
+
+            // GHOST EXTERMINATOR CHECK
+            const { data: userExists } = await supabase.from('profiles').select('user_id').eq('user_id', SESSION_USER).maybeSingle();
+            if(!userExists) {
+                localStorage.clear();
+                window.location.replace("index.html");
+                return;
+            }
+
+            const { data } = await supabase.from('businesses').select('*').eq('name', targetName).single();
+            bizData = data;
+            
+            if(bizData) {
+                document.getElementById('ui-title').innerText = bizData.name;
+                document.getElementById('ui-cat').innerText = bizData.category || "";
+                const defaultDesc = "ট্রেন্ড ফ্যাশন হলো বাংলাদেশের একটি প্রিমিয়াম উডেন ডেকোর ব্র্যান্ড, যা বাসাবাড়ি এবং অফিসের জন্য উচ্চমানের কাঠের তৈরি জিনিসপত্র সরবরাহ করে।";
+                document.getElementById('ui-desc').innerText = bizData.description || defaultDesc;
+                document.getElementById('ui-inv').innerText = "৳ " + (bizData.monthly_inv || 0).toLocaleString('en-IN');
+                document.getElementById('ui-prof').innerText = "৳ " + (bizData.monthly_profit || 0).toLocaleString('en-IN');
+
+                let hasSocial = false;
+                if(bizData.fb_link) { const fb = document.getElementById('ui-fb'); fb.href = bizData.fb_link; fb.style.display = 'block'; hasSocial = true; }
+                if(bizData.web_link) { const wb = document.getElementById('ui-web'); wb.href = bizData.web_link; wb.style.display = 'block'; hasSocial = true; }
+                if(bizData.yt_link) { const yt = document.getElementById('ui-yt'); yt.href = bizData.yt_link; yt.style.display = 'block'; hasSocial = true; }
+                if(hasSocial) document.getElementById('social-container').style.display = 'block';
+                currentPrice = bizData.live_price || bizData.start_price;
+                cloudHistory = bizData.chart_history || [];
+            }
+            
+            initActiveCandle();
+            updatePriceUI(currentPrice);
+            update24hStats();
+            draw();
+            await fetchMyTradesAndBalance();
+            
+            setInterval(fetchLiveCloudData, 2000);
+            setInterval(addTrade, 2000);
+        };
+
+        function openModal(type) {
+            if(type === 'SELL' && totalHoldings <= 0) {
+                alert("আপনার কাছে বিক্রি করার মতো কোনো শেয়ার নেই!");
+                return;
+            }
+            activeTradeType = type;
+            const modal = document.getElementById('trade-modal');
+            const title = document.getElementById('modal-title');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const qtyInput = document.getElementById('modal-qty');
+            document.getElementById('modal-desc').innerText = `বর্তমান মূল্য: ৳ ${currentPrice.toFixed(2)}`;
+            qtyInput.value = 1;
+            
+            if(type === 'BUY') {
+                title.innerText = "শেয়ার কিনুন";
+                title.style.color = "#00c087";
+                confirmBtn.className = "m-btn m-confirm buy";
+                confirmBtn.innerText = "কিনুন";
+            } else {
+                title.innerText = "শেয়ার বিক্রি করুন";
+                title.style.color = "#f84960";
+                confirmBtn.className = "m-btn m-confirm sell";
+                confirmBtn.innerText = "বিক্রি করুন";
+            }
+            confirmBtn.onclick = () => executeTrade();
+            calculateModalTotal();
+            modal.classList.add('show');
+        }
+
+        function closeModal() { document.getElementById('trade-modal').classList.remove('show'); }
+
+        function calculateModalTotal() {
+            let qty = parseInt(document.getElementById('modal-qty').value) || 0;
+            let rawTotal = qty * currentPrice;
+            let fee = rawTotal * 0.005; 
+            let grandTotal = activeTradeType === 'BUY' ? (rawTotal + fee) : (rawTotal - fee);
+            document.getElementById('modal-fee-display').innerText = `প্ল্যাটফর্ম ফি (০.৫%): ৳ ${fee.toFixed(2)}`;
+            document.getElementById('modal-total-display').innerText = `সর্বমোট: ৳ ${grandTotal.toFixed(2)}`;
+        }
+
+        async function executeTrade() {
+            if(!SESSION_USER) return;
+            let qty = parseInt(document.getElementById('modal-qty').value);
+            if(isNaN(qty) || qty <= 0) return;
+            let rawTotal = qty * currentPrice;
+            let fee = rawTotal * 0.005;
+            let totalCostWithFee = activeTradeType === 'BUY' ? (rawTotal + fee) : (rawTotal - fee);
+
+            if(activeTradeType === 'BUY' && totalCostWithFee > currentBalance) {
+                alert(`অপর্যাপ্ত ব্যালেন্স! ফি সহ আপনার ৳${totalCostWithFee.toFixed(2)} প্রয়োজন।`);
+                return;
+            }
+            if(activeTradeType === 'SELL' && qty > totalHoldings) {
+                alert(`আপনার কাছে পর্যাপ্ত শেয়ার নেই। বর্তমান শেয়ার: ${totalHoldings}`);
+                return;
+            }
+            document.getElementById('modal-confirm-btn').innerText = "...";
+            const { error } = await supabase.from('trades').insert([{
+                user_id: SESSION_USER,
+                business_name: targetName,
+                type: activeTradeType,
+                shares: qty,
+                price: currentPrice,
+                total_amount: rawTotal,
+                platform_fee: fee
+            }]);
+            if(!error) { closeModal(); fetchMyTradesAndBalance(); } 
+            else { alert("ট্রেড ব্যর্থ হয়েছে!"); closeModal(); }
+        }
+
+        async function fetchMyTradesAndBalance() {
+            if(!SESSION_USER) return;
+            // FIXED: Default to 0.00
+            const { data: prof } = await supabase.from('profiles').select('current_balance').eq('user_id', SESSION_USER).single();
+            let baseBal = prof ? parseFloat(prof.current_balance) : 0;
+
+            const { data: allTrades } = await supabase.from('trades').select('*').eq('user_id', SESSION_USER);
+            let tradeImpact = 0;
+            allTrades?.forEach(t => {
+                let f = t.platform_fee || (t.total_amount * 0.005);
+                if(t.type === 'BUY') tradeImpact -= (t.total_amount + f);
+                else tradeImpact += (t.total_amount - f);
+            });
+
+            const { data: wallet } = await supabase.from('wallet_tx').select('*').eq('user_id', SESSION_USER).eq('status', 'APPROVED');
+            let walletImpact = 0;
+            wallet?.forEach(w => {
+                if(w.type === 'DEPOSIT') walletImpact += w.amount;
+                else walletImpact -= (w.amount + w.fee);
+            });
+
+            currentBalance = baseBal + tradeImpact + walletImpact;
+            document.getElementById('ui-balance').innerText = `৳ ${currentBalance.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            myTrades = allTrades ? allTrades.filter(t => t.business_name === targetName).sort((a,b) => new Date(b.created_at) - new Date(a.created_at)) : [];
+            calculatePortfolio();
+        }
+
+        function calculatePortfolio() {
+            totalHoldings = 0; let totalSpent = 0; let historyHTML = '';
+            myTrades.forEach(t => {
+                let dateStr = new Date(t.created_at).toLocaleString('bn-BD', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+                let colorClass = t.type === 'BUY' ? 'green' : 'red';
+                let banglaType = t.type === 'BUY' ? 'ক্রয়' : 'বিক্রয়';
+                historyHTML += `<div class="h-item"><div><span class="h-type ${colorClass}">${banglaType}</span><span style="color:#848e9c">${dateStr}</span></div><div style="text-align:right"><span style="font-weight:bold; color:#fff">${t.shares} শেয়ার</span><span style="color:#848e9c">@ ৳${t.price.toFixed(2)}</span><span style="color:#fff; margin-top:3px">৳${t.total_amount.toFixed(2)}</span></div></div>`;
+            });
+            const chronologicalTrades = [...myTrades].reverse();
+            chronologicalTrades.forEach(t => {
+                let f = t.platform_fee || (t.total_amount * 0.005);
+                if(t.type === 'BUY') { totalHoldings += t.shares; totalSpent += (t.total_amount + f); } 
+                else if (t.type === 'SELL') {
+                    let avgCost = totalHoldings > 0 ? (totalSpent / totalHoldings) : 0;
+                    totalHoldings -= t.shares;
+                    totalSpent -= (t.shares * avgCost);
+                    if(totalHoldings <= 0) { totalHoldings = 0; totalSpent = 0; }
+                }
+            });
+            totalSpent = Math.max(0, totalSpent);
+            let avgBuyPrice = totalHoldings > 0 ? (totalSpent / totalHoldings) : 0;
+            let currentValue = totalHoldings * currentPrice;
+            let profitLoss = currentValue - totalSpent;
+            let pnlPercent = totalSpent > 0 ? (profitLoss / totalSpent) * 100 : 0;
+            document.getElementById('my-shares').innerText = totalHoldings;
+            document.getElementById('my-avg-price').innerText = `৳ ${avgBuyPrice.toFixed(2)}`;
+            document.getElementById('my-invested').innerText = `৳ ${totalSpent.toFixed(2)}`;
+            document.getElementById('my-current-val').innerText = `৳ ${currentValue.toFixed(2)}`;
+            const pnlEl = document.getElementById('my-pnl');
+            let sign = profitLoss >= 0 ? '+' : '';
+            pnlEl.innerText = `${sign}৳ ${profitLoss.toFixed(2)} (${sign}${pnlPercent.toFixed(2)}%)`;
+            pnlEl.className = `big-pnl ${profitLoss >= 0 ? 'green' : 'red'}`;
+            document.getElementById('my-history-list').innerHTML = historyHTML || '<div style="text-align:center; color:#848e9c; padding: 20px;">কোন ট্রেডিং ইতিহাস নেই।</div>';
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tab-btn-holdings').classList.toggle('active', tabId === 'holdings');
+            document.getElementById('tab-btn-history').classList.toggle('active', tabId === 'history');
+            document.getElementById('content-holdings').classList.toggle('active', tabId === 'holdings');
+            document.getElementById('content-history').classList.toggle('active', tabId === 'history');
+        }
+
+        function initActiveCandle() {
+            const lastClosed = cloudHistory[cloudHistory.length - 1];
+            const startPoint = lastClosed ? lastClosed.close : currentPrice;
+            activeCandle = { open: startPoint, close: currentPrice, high: Math.max(startPoint, currentPrice), low: Math.min(startPoint, currentPrice), timeStr: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) };
+        }
+
+        function updatePriceUI(newPrice) {
+            const pEl = document.getElementById('top-price');
+            pEl.innerText = "৳ " + newPrice.toFixed(2);
+            pEl.style.color = newPrice >= currentPrice ? '#00c087' : '#f84960';
+            const closePrice = bizData?.close_price || newPrice;
+            const changeVal = newPrice - closePrice;
+            const changePct = closePrice > 0 ? (changeVal / closePrice) * 100 : 0;
+            const sign = changeVal >= 0 ? '+' : '';
+            const changeEl = document.getElementById('price-change');
+            changeEl.innerText = `${sign}${changeVal.toFixed(2)} (${sign}${changePct.toFixed(2)}%)`;
+            changeEl.className = `price-change ${changeVal >= 0 ? 'green' : 'red'}`;
+            currentPrice = newPrice;
+        }
+
+        function update24hStats() {
+            if(!bizData) return;
+            let maxH = Math.max(bizData.start_price, bizData.close_price);
+            let minL = Math.min(bizData.start_price, bizData.close_price);
+            cloudHistory.forEach(c => { if (c.high > maxH) maxH = c.high; if (c.low < minL) minL = c.low; });
+            if (activeCandle) { if (activeCandle.high > maxH) maxH = activeCandle.high; if (activeCandle.low < minL) minL = activeCandle.low; }
+            document.getElementById('ui-high').innerText = "৳ " + maxH.toFixed(2);
+            document.getElementById('ui-low').innerText = "৳ " + minL.toFixed(2);
+        }
+
+        async function fetchLiveCloudData() {
+            if(!bizData) return;
+            const { data } = await supabase.from('businesses').select('live_price, chart_history').eq('id', bizData.id).single();
+            if (data?.chart_history && data.chart_history.length > cloudHistory.length) { cloudHistory = data.chart_history; initActiveCandle(); }
+            const newPrice = data?.live_price || currentPrice;
+            activeCandle.close = newPrice;
+            if (newPrice > activeCandle.high) activeCandle.high = newPrice;
+            if (newPrice < activeCandle.low) activeCandle.low = newPrice;
+            updatePriceUI(newPrice);
+            update24hStats();
+            if(myTrades.length > 0) calculatePortfolio();
+            if(document.getElementById('trade-modal').classList.contains('show')) calculateModalTotal();
+            const nowMinute = new Date().getMinutes();
+            if (nowMinute !== currentMinute) { cloudHistory.push({...activeCandle}); currentMinute = nowMinute; initActiveCandle(); }
+            draw();
+        }
+
+        function draw() {
+            const renderCandles = [...cloudHistory, activeCandle];
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+            const cW = 10; const pR = 60; const gap = 6; const totalCandleWidth = cW + gap;
+            const dH = canvas.offsetHeight - 20;
+            const visibleCandles = renderCandles.slice(-candlesPerPage);
+            if (visibleCandles.length === 0) return;
+            let minP = Math.min(...visibleCandles.map(c => c.low));
+            let maxP = Math.max(...visibleCandles.map(c => c.high));
+            let actualRange = maxP - minP || 1;
+            maxP += actualRange * 0.1; minP -= actualRange * 0.1; 
+            let range = maxP - minP;
+            const getY = (price) => dH - 10 - ((price - minP) / range) * (dH - 20);
+            renderCandles.forEach((c, i) => {
+                const x = (canvas.offsetWidth - pR - 15) - (renderCandles.length - 1 - i) * totalCandleWidth;
+                if (x < -20) return;
+                const color = c.close >= c.open ? '#00c087' : '#f84960';
+                ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(x + cW/2, getY(c.high)); ctx.lineTo(x + cW/2, getY(c.low)); ctx.stroke();
+                const yT = getY(Math.max(c.open, c.close)), yB = getY(Math.min(c.open, c.close));
+                ctx.fillRect(x, yT, cW, Math.max(1, yB - yT));
+                if ((renderCandles.length - 1 - i) % 5 === 0) { ctx.fillStyle = "#848e9c"; ctx.font = "10px sans-serif"; ctx.fillText(c.timeStr, x - 10, canvas.offsetHeight - 5); }
+            });
+            const liveY = getY(currentPrice);
+            ctx.strokeStyle = "rgba(144, 164, 174, 0.4)"; ctx.setLineDash([4, 4]);
+            ctx.beginPath(); ctx.moveTo(0, liveY); ctx.lineTo(canvas.offsetWidth - pR, liveY); ctx.stroke(); ctx.setLineDash([]);
+            ctx.fillStyle = activeCandle.close >= activeCandle.open ? "#00c087" : "#f84960";
+            ctx.fillRect(canvas.offsetWidth - pR, liveY - 10, pR, 20);
+            ctx.fillStyle = "white"; ctx.font = "bold 11px sans-serif"; ctx.fillText(currentPrice.toFixed(2), canvas.offsetWidth - pR + 5, liveY + 4);
+        }
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                if (initialDist !== null) {
+                    if (dist > initialDist + 5) { candlesPerPage = Math.max(10, candlesPerPage - 1); initialDist = dist; } 
+                    else if (dist < initialDist - 5) { candlesPerPage = Math.min(100, candlesPerPage + 1); initialDist = dist; }
+                    draw();
+                } else { initialDist = dist; }
+            }
+        }, { passive: false });
+        let initialDist = null;
+        canvas.addEventListener('touchend', () => { initialDist = null; });
+        canvas.addEventListener('wheel', (e) => { e.preventDefault(); candlesPerPage = e.deltaY > 0 ? Math.min(100, candlesPerPage + 2) : Math.max(10, candlesPerPage - 2); draw(); }, { passive: false });
+        const bN = ["আরিফ", "মেহেদী", "শাহীম", "সোহেল", "ইমন", "রাব্বি", "শাকিল"];
+        function addTrade() {
+            const list = document.getElementById('trade-list');
+            const side = Math.random() > 0.4 ? 'ক্রয়' : 'বিক্রয়';
+            const user = bN[Math.floor(Math.random()*bN.length)] + (Math.random()>0.5 ? " খান" : " আহমেদ");
+            const row = document.createElement('div'); row.className = 't-row';
+            row.innerHTML = `<span>${user}</span><span class="${side==='ক্রয়'?'green':'red'}">${side}</span><span style="color:#fff">৳ ${currentPrice.toFixed(2)}</span>`;
+            list.prepend(row); if(list.childElementCount > 8) list.lastElementChild.remove();
+        }
+    </script>
+</body>
+</html>

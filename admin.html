@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BSB - Master Admin Pro</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+    <style>
+        /* --- ORIGINAL PREMIUM UI STYLES --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { display: flex; min-height: 100vh; background: #f4f7f9; color: #333; flex-direction: row; overflow-x: hidden; }
+        
+        .mobile-header { display: none; background: #0b0e11; padding: 15px 20px; align-items: center; justify-content: space-between; color: white; width: 100%; position: sticky; top: 0; z-index: 1500; }
+        .menu-toggle { background: #00c087; color: white; border: none; padding: 8px 12px; font-size: 18px; cursor: pointer; border-radius: 6px; font-weight: bold; }
+        
+        .sidebar { width: 260px; background: #0b0e11; color: white; padding: 30px 0; flex-shrink: 0; transition: left 0.3s ease; z-index: 2000; position: relative; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; color: #f0b90b; letter-spacing: 2px; font-size: 20px; }
+        .nav-container { display: flex; flex-direction: column; }
+        .nav-btn { background: transparent; color: #848e9c; border: none; padding: 15px 30px; width: 100%; text-align: left; font-size: 15px; cursor: pointer; transition: 0.3s; white-space: nowrap; border-left: 4px solid transparent; }
+        .nav-btn:hover, .nav-btn.active { background: #161a1e; color: white; border-left: 4px solid #00c087; }
+        .close-sidebar { display: none; text-align: right; padding: 0 20px 20px; color: #f84960; font-weight: bold; cursor: pointer; }
+        
+        .engine-status { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-size: 11px; color: #00c087; font-weight: bold; padding: 10px; background: rgba(0, 192, 135, 0.1); border-top: 1px solid #161a1e; }
+        
+        .main { flex: 1; padding: 40px; overflow-y: auto; width: 100%; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 30px; align-items: center; }
+        .header h1 { font-size: 24px; color: #1a202c; }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); margin-bottom: 30px; border: 1px solid #e2e8f0; width: 100%; }
+        .card h3 { margin-bottom: 20px; color: #1a202c; border-bottom: 2px solid #f0f4f8; padding-bottom: 10px; font-size: 18px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .full-width { grid-column: span 2; }
+        input, textarea, select { padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; width: 100%; outline: none; font-size: 14px; background: #fff; }
+        input:focus { border-color: #00c087; }
+        
+        .btn-primary { background: #00c087; color: white; border: none; padding: 14px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; transition: 0.2s; width: 100%; }
+        .btn-secondary { background: #4a5568; color: white; border: none; padding: 14px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; width: 100%; margin-top: 10px; }
+        .btn-small { background: #1976d2; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 5px; font-weight: bold; }
+        .btn-granular { background: #1a237e; color: white; border: none; padding: 10px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-top: 8px; font-weight: bold; width: 100%; }
+        .btn-approve { background: #2e7d32; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-right: 5px; }
+        .btn-reject { background: #d32f2f; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 800px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; vertical-align: middle; white-space: nowrap; }
+        th { background: #f7fafc; color: #4a5568; font-weight: bold; }
+
+        /* Support Chat UI */
+        .chat-container { display: flex; height: 550px; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
+        .chat-users { width: 280px; background: #f7fafc; border-right: 1px solid #e2e8f0; overflow-y: auto; }
+        .chat-user-item { padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 14px; position: relative; }
+        .chat-user-item.active { background: #e2e8f0; color: #1976d2; border-left: 4px solid #1976d2; }
+        .chat-box { flex: 1; display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #fdfdfd; }
+        .chat-input-area { padding: 15px; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; background: #fff; }
+        .msg-bubble { max-width: 80%; padding: 10px 15px; border-radius: 14px; font-size: 13px; line-height: 1.4; position: relative; }
+        .msg-admin { background: #1976d2; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-user { background: #edf2f7; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 3000; padding: 20px; }
+        .modal-box { background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
+        .modal-stats { background: #f8f9fb; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; border: 1px solid #e2e8f0; }
+        .seq-list { margin-top: 15px; background: #f8f9fb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; }
+        .seq-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #e2e8f0; font-size: 13px; font-weight: bold; }
+
+        /* Responsive Mobile Styles */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .mobile-header { display: flex; }
+            .sidebar { position: fixed; left: -100%; top: 0; height: 100vh; width: 280px; box-shadow: 2px 0 15px rgba(0,0,0,0.3); }
+            .sidebar.open { left: 0; }
+            .close-sidebar { display: block; }
+            .main { padding: 15px; width: 100vw; }
+            .chat-container { flex-direction: column; height: 650px; }
+            .chat-users { width: 100%; height: 120px; display: flex; overflow-x: auto; flex-shrink: 0; }
+            .chat-user-item { white-space: nowrap; border-bottom: none; border-right: 1px solid #e2e8f0; min-width: 150px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-header">
+        <h2>BSB ADMIN</h2>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰ Menu</button>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="close-sidebar" onclick="toggleSidebar()">✕ Close</div>
+        <h2>BSB ADMIN</h2>
+        <div class="nav-container">
+            <button class="nav-btn active" onclick="switchTab('market')">📈 Algorithmic Control</button>
+            <button class="nav-btn" onclick="switchTab('add-biz')">🏢 Manage Businesses</button>
+            <button class="nav-btn" onclick="switchTab('users')">👥 User Database</button>
+            <button class="nav-btn" onclick="switchTab('wallet-req')">💰 Wallet Approvals</button>
+            <button class="nav-btn" onclick="switchTab('support')">💬 Support Desk</button>
+        </div>
+        <div class="engine-status">● Master Pulse Engine Active</div>
+    </div>
+
+    <div class="main">
+        <div class="header"><h1 id="page-title">Algorithmic Control</h1></div>
+
+        <div id="market" class="section">
+            <div class="card">
+                <h3>Live Price Scheduler</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Business</th>
+                                <th>Schedule Start (Time/Price)</th>
+                                <th>Schedule End (Time/Price)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="biz-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="add-biz" class="section" style="display:none;">
+            <div class="card">
+                <h3 id="form-title">Business Editor</h3>
+                <input type="hidden" id="edit-id">
+                <div class="form-grid">
+                    <input type="text" id="new-name" placeholder="Name">
+                    <input type="text" id="new-cat" placeholder="Category">
+                    <textarea id="new-desc" class="full-width" rows="3" placeholder="Description"></textarea>
+                    <input type="number" id="new-start" placeholder="Starting Price">
+                    <input type="number" id="new-close" placeholder="Closing Price">
+                    <input type="number" id="new-inv" placeholder="Required Investment">
+                    <input type="number" id="new-prof" placeholder="Monthly Profit">
+                    <input type="url" id="new-fb" placeholder="Facebook Link">
+                    <input type="url" id="new-web" placeholder="Website Link">
+                    <input type="url" id="new-yt" placeholder="YouTube Link" class="full-width">
+                </div>
+                <button class="btn-primary" onclick="saveBusiness()">💾 Save Changes</button>
+                <button class="btn-secondary" id="cancel-biz-btn" onclick="cancelEdit()" style="display:none;">✖ Cancel</button>
+            </div>
+            <div class="card">
+                <h3>Asset Directory</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Name</th><th>Category</th><th>Action</th></tr></thead>
+                        <tbody id="edit-biz-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="users" class="section" style="display:none;">
+            <div class="card">
+                <h3>User Management (Unified Profiles)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Phone (ID)</th><th>Username</th><th>PIN</th><th>Base Bal</th><th>Live Bal</th><th>Action</th></tr></thead>
+                        <tbody id="user-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="wallet-req" class="section" style="display:none;">
+            <div class="card">
+                <h3>Pending Approvals</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Date</th><th>User ID</th><th>Type</th><th>Amount</th><th>Bkash #</th><th>Action</th></tr></thead>
+                        <tbody id="wallet-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="support" class="section" style="display:none;">
+            <div class="card" style="padding:0;">
+                <div class="chat-container">
+                    <div class="chat-users" id="chat-user-list"></div>
+                    <div class="chat-box">
+                        <div class="chat-messages" id="admin-chat-area"></div>
+                        <div class="chat-input-area">
+                            <input type="text" id="admin-chat-input" placeholder="Write a reply...">
+                            <button class="btn-primary" style="width:auto;" onclick="sendAdminReply()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="balance-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>⚙️ Profile Control</h2>
+            <div class="modal-stats" id="modal-stats-text"></div>
+            <div style="margin-bottom:15px;"><label>Login PIN (4 Digits)</label><input type="text" id="mod-pin" maxlength="4"></div>
+            <div style="margin-bottom:15px;"><label>Unified Bal (৳)</label><input type="number" id="mod-unified-bal" oninput="calculateFromUnified()"></div>
+            <div style="margin-bottom:15px;"><label>Database Base Bal (৳)</label><input type="number" id="mod-base-bal" oninput="calculateFromBase()"></div>
+            <input type="hidden" id="mod-uid">
+            <button class="btn-primary" onclick="saveNewBalance()">Update Record</button>
+            <button class="btn-secondary" onclick="closeModal('balance-modal')">Close</button>
+        </div>
+    </div>
+
+    <div id="sequence-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h2>⏱️ Chart Sequencer</h2>
+            <input type="hidden" id="seq-biz-id">
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <div style="flex:1;"><label>Execution (Mins)</label><select id="seq-time"><option value="1">1 Min</option><option value="5">5 Min</option><option value="15">15 Min</option><option value="60">1 Hour</option></select></div>
+                <div style="flex:1;"><label>Target Price</label><input type="number" id="seq-price"></div>
+            </div>
+            <button class="btn-primary" onclick="addSequenceItem()">➕ Add Step</button>
+            <div class="seq-list" id="seq-list-container"></div>
+            <button class="btn-secondary" onclick="closeModal('sequence-modal')" style="margin-top:10px;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
+        const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
+        const supabase = window.supabase.createClient(S_URL, S_KEY);
+
+        let activeChatUser = null, globalBusinesses = [], currentTradeImpact = 0, currentWalletImpact = 0, currentSequenceArray = [];
+
+        window.onload = () => {
+            fetchBusinesses(); fetchUsers(); fetchWalletRequests(); fetchChatUsers();
+            startMasterTickEngine();
+            // Pulse Engine: Sync Chat and Wallets every 5 seconds
+            setInterval(() => { 
+                if(activeChatUser) openUserChat(activeChatUser, true); 
+                fetchWalletRequests(); 
+            }, 5000);
+        };
+
+        function switchTab(id) {
+            document.querySelectorAll('.section').forEach(s => s.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('active');
+                if(b.getAttribute('onclick').includes(id)) b.classList.add('active');
+            });
+            if(window.innerWidth <= 768) toggleSidebar();
+        }
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        // --- 📈 TICK ENGINE LOGIC ---
+        function startMasterTickEngine() {
+            setInterval(async () => {
+                const { data } = await supabase.from('businesses').select('id, chart_sequence');
+                if(!data) return;
+                const now = new Date().getTime();
+                data.forEach(async (biz) => {
+                    if (biz.chart_sequence?.length > 0) {
+                        let pending = [...biz.chart_sequence];
+                        let updated = false, newPrice = null;
+                        pending = pending.filter(seq => {
+                            if (now >= seq.time) { newPrice = seq.price; updated = true; return false; }
+                            return true;
+                        });
+                        if (updated) await supabase.from('businesses').update({ live_price: newPrice, chart_sequence: pending }).eq('id', biz.id);
+                    }
+                });
+            }, 10000);
+        }
+
+        async function fetchBusinesses() {
+            const { data } = await supabase.from('businesses').select('*').order('name');
+            globalBusinesses = data || [];
+            document.getElementById('biz-list').innerHTML = globalBusinesses.map(b => `
+                <tr>
+                    <td><b>${b.name}</b><br><span style="color:#00c087">Live: ৳${b.live_price || b.start_price}</span></td>
+                    <td><input type="datetime-local" id="st-${b.id}" value="${b.schedule_start_time ? new Date(b.schedule_start_time).toISOString().slice(0,16) : ''}"><br><input type="number" id="sp-${b.id}" value="${b.schedule_start_price || b.start_price}" style="width:100px;margin-top:5px"></td>
+                    <td><input type="datetime-local" id="et-${b.id}" value="${b.schedule_end_time ? new Date(b.schedule_end_time).toISOString().slice(0,16) : ''}"><br><input type="number" id="ep-${b.id}" value="${b.schedule_end_price || b.start_price}" style="width:100px;margin-top:5px"></td>
+                    <td>
+                        <button class="btn-small" onclick="setSchedule(${b.id})">Save</button>
+                        <button class="btn-granular" onclick="openSequenceModal(${b.id})">Editor</button>
+                    </td>
+                </tr>`).join('');
+            document.getElementById('edit-biz-list').innerHTML = globalBusinesses.map(b => `<tr><td>${b.name}</td><td>${b.category}</td><td><button class="btn-small" onclick="loadEditForm(${b.id})">Edit Info</button></td></tr>`).join('');
+        }
+
+        async function setSchedule(id) {
+            const st = document.getElementById(`st-${id}`).value, et = document.getElementById(`et-${id}`).value;
+            const sp = document.getElementById(`sp-${id}`).value, ep = document.getElementById(`ep-${id}`).value;
+            const { error } = await supabase.from('businesses').update({
+                schedule_start_time: st ? new Date(st).toISOString() : null,
+                schedule_end_time: et ? new Date(et).toISOString() : null,
+                schedule_start_price: parseFloat(sp), schedule_end_price: parseFloat(ep)
+            }).eq('id', id);
+            if(!error) { alert("Schedule Updated!"); fetchBusinesses(); }
+        }
+
+        function openSequenceModal(id) {
+            const biz = globalBusinesses.find(b => b.id === id);
+            document.getElementById('seq-biz-id').value = id;
+            currentSequenceArray = biz.chart_sequence || [];
+            document.getElementById('sequence-modal').style.display = 'flex';
+            renderSequenceList();
+        }
+
+        async function addSequenceItem() {
+            const id = document.getElementById('seq-biz-id').value;
+            const offset = parseInt(document.getElementById('seq-time').value);
+            const price = parseFloat(document.getElementById('seq-price').value);
+            const execTime = new Date().getTime() + (offset * 60000);
+            currentSequenceArray.push({ time: execTime, price: price });
+            await supabase.from('businesses').update({ chart_sequence: currentSequenceArray }).eq('id', id);
+            renderSequenceList();
+        }
+
+        function renderSequenceList() {
+            const list = document.getElementById('seq-list-container');
+            list.innerHTML = (currentSequenceArray || []).sort((a,b)=>a.time-b.time).map((s,i)=>`<div class="seq-item"><span>${new Date(s.time).toLocaleTimeString()} ➔ ৳${s.price}</span><button onclick="removeSeq(${i})" style="color:red; background:none; border:none; font-weight:bold; cursor:pointer;">X</button></div>`).join('');
+        }
+
+        async function removeSeq(i) {
+            currentSequenceArray.splice(i, 1);
+            await supabase.from('businesses').update({ chart_sequence: currentSequenceArray }).eq('id', document.getElementById('seq-biz-id').value);
+            renderSequenceList();
+        }
+
+        async function saveBusiness() {
+            const id = document.getElementById('edit-id').value;
+            const payload = {
+                name: document.getElementById('new-name').value,
+                category: document.getElementById('new-cat').value,
+                description: document.getElementById('new-desc').value,
+                start_price: parseFloat(document.getElementById('new-start').value),
+                close_price: parseFloat(document.getElementById('new-close').value),
+                monthly_inv: parseFloat(document.getElementById('new-inv').value),
+                monthly_profit: parseFloat(document.getElementById('new-prof').value),
+                fb_link: document.getElementById('new-fb').value,
+                web_link: document.getElementById('new-web').value,
+                yt_link: document.getElementById('new-yt').value
+            };
+            if(id) await supabase.from('businesses').update(payload).eq('id', id);
+            else await supabase.from('businesses').insert([payload]);
+            alert("Business Updated!"); fetchBusinesses(); cancelEdit();
+        }
+
+        function loadEditForm(id) {
+            const b = globalBusinesses.find(x => x.id === id);
+            document.getElementById('edit-id').value = b.id;
+            document.getElementById('new-name').value = b.name;
+            document.getElementById('new-cat').value = b.category;
+            document.getElementById('new-desc').value = b.description;
+            document.getElementById('new-start').value = b.start_price;
+            document.getElementById('new-close').value = b.close_price;
+            document.getElementById('new-inv').value = b.monthly_inv;
+            document.getElementById('new-prof').value = b.monthly_profit;
+            document.getElementById('new-fb').value = b.fb_link || '';
+            document.getElementById('new-web').value = b.web_link || '';
+            document.getElementById('new-yt').value = b.yt_link || '';
+            document.getElementById('cancel-biz-btn').style.display = 'block';
+            document.getElementById('form-title').innerText = "Edit Business: " + b.name;
+        }
+
+        function cancelEdit() { document.getElementById('edit-id').value = ''; document.querySelectorAll('.form-grid input, .form-grid textarea').forEach(i=>i.value=''); document.getElementById('cancel-biz-btn').style.display = 'none'; document.getElementById('form-title').innerText = "Business Editor"; }
+
+        // --- 👥 USER & BALANCE LOGIC ---
+        async function fetchUsers() {
+            const [{data:p}, {data:t}, {data:w}] = await Promise.all([
+                supabase.from('profiles').select('*').order('created_at',{ascending:false}),
+                supabase.from('trades').select('*'),
+                supabase.from('wallet_tx').select('*').eq('status','APPROVED')
+            ]);
+            document.getElementById('user-list').innerHTML = (p||[]).map(u => {
+                let tImp = 0; t?.filter(x => x.user_id === u.user_id).forEach(x => {
+                    let f = x.platform_fee || (x.total_amount*0.005);
+                    x.type === 'BUY' ? tImp -= (x.total_amount+f) : tImp += (x.total_amount-f);
+                });
+                let wImp = 0; w?.filter(x => x.user_id === u.user_id).forEach(x => {
+                    x.type === 'DEPOSIT' ? wImp += x.amount : wImp -= (x.amount+x.fee);
+                });
+                let base = parseFloat(u.current_balance || 0);
+                let uni = base + tImp + wImp;
+                return `<tr><td><b>${u.user_id}</b></td><td>${u.username || 'User'}</td><td><code>${u.pin}</code></td><td>৳${base.toFixed(2)}</td><td style="color:#00c087; font-weight:bold;">৳${uni.toFixed(2)}</td><td><button class="btn-small" onclick="openBalanceModal('${u.user_id}','${u.username}',${base},${tImp},${wImp},${uni},'${u.pin}')">Manage</button></td></tr>`;
+            }).join('');
+        }
+
+        function openBalanceModal(uid, name, base, tImp, wImp, uni, pin) {
+            currentTradeImpact = tImp; currentWalletImpact = wImp;
+            document.getElementById('mod-uid').value = uid;
+            document.getElementById('mod-pin').value = pin;
+            document.getElementById('mod-base-bal').value = base;
+            document.getElementById('mod-unified-bal').value = uni.toFixed(2);
+            document.getElementById('modal-stats-text').innerHTML = `User: ${name || 'User'}<br>Phone: ${uid}`;
+            document.getElementById('balance-modal').style.display = 'flex';
+        }
+
+        async function saveNewBalance() {
+            const uid = document.getElementById('mod-uid').value;
+            const pin = document.getElementById('mod-pin').value;
+            const base = parseFloat(document.getElementById('mod-base-bal').value);
+            if(pin.length !== 4) return alert("PIN must be 4 digits");
+            await supabase.from('profiles').update({ current_balance: base, pin: pin }).eq('user_id', uid);
+            alert("Profile Updated!"); closeModal('balance-modal'); fetchUsers();
+        }
+
+        function calculateFromUnified() {
+            const uni = parseFloat(document.getElementById('mod-unified-bal').value) || 0;
+            document.getElementById('mod-base-bal').value = (uni - currentTradeImpact - currentWalletImpact).toFixed(2);
+        }
+
+        function calculateFromBase() {
+            const base = parseFloat(document.getElementById('mod-base-bal').value) || 0;
+            document.getElementById('mod-unified-bal').value = (base + currentTradeImpact + currentWalletImpact).toFixed(2);
+        }
+
+        // --- 💰 WALLET & 💬 CHAT ---
+        async function fetchWalletRequests() {
+            const { data } = await supabase.from('wallet_tx').select('*').eq('status','PENDING');
+            document.getElementById('wallet-list').innerHTML = (data||[]).map(x => `
+                <tr><td>${new Date(x.created_at).toLocaleDateString()}</td><td>${x.user_id}</td><td><span class="badge ${x.type==='DEPOSIT'?'bg-dep':'bg-wd'}">${x.type}</span></td><td>৳${x.amount}</td><td>${x.bkash_number || '-'}</td><td><button class="btn-approve" onclick="procTx('${x.id}','APPROVED')">✔</button><button class="btn-reject" onclick="procTx('${x.id}','REJECTED')">✖</button></td></tr>
+            `).join('');
+        }
+        async function procTx(id, s) { if(confirm("Process this transaction?")) { await supabase.from('wallet_tx').update({status:s}).eq('id',id); fetchWalletRequests(); fetchUsers(); } }
+
+        async function fetchChatUsers() {
+            const { data } = await supabase.from('support_messages').select('user_id').order('created_at',{ascending:false});
+            const users = [...new Set((data||[]).map(m => m.user_id))];
+            document.getElementById('chat-user-list').innerHTML = users.map(u => `<div class="chat-user-item" onclick="openUserChat('${u}')">📱 ${u}</div>`).join('');
+        }
+
+        async function openUserChat(uid, isSilent = false) {
+            activeChatUser = uid;
+            const { data } = await supabase.from('support_messages').select('*').eq('user_id', uid).order('created_at',{ascending:true});
+            const html = (data||[]).map(m => `<div class="msg-bubble ${m.sender==='ADMIN'?'msg-admin':'msg-user'}">${m.message}</div>`).join('');
+            const a = document.getElementById('admin-chat-area');
+            if(a.innerHTML !== html) { a.innerHTML = html; a.scrollTop = a.scrollHeight; }
+            if(!isSilent) document.querySelectorAll('.chat-user-item').forEach(i => i.classList.toggle('active', i.innerText.includes(uid)));
+        }
+
+        async function sendAdminReply() {
+            const msg = document.getElementById('admin-chat-input').value;
+            if(!activeChatUser || !msg) return;
+            await supabase.from('support_messages').insert([{user_id: activeChatUser, sender: 'ADMIN', message: msg}]);
+            document.getElementById('admin-chat-input').value = ''; openUserChat(activeChatUser);
+        }
+    </script>
+</body>
+</html>

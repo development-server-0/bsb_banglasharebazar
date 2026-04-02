@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BSB - Profile Pro</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #f4f7f9; min-height: 100dvh; padding-bottom: 100px; color: #263238; }
+        
+        .top-nav { background: #ffffff; padding: 15px 20px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.03); position: sticky; top: 0; z-index: 100; }
+        .top-nav h1 { font-size: 18px; color: #1a237e; font-weight: 800; }
+        
+        /* Profile Header Card */
+        .profile-card { background: white; margin: 20px; padding: 30px 20px; border-radius: 24px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #edf2f7; }
+        .avatar { width: 75px; height: 75px; background: linear-gradient(135deg, #1976d2, #0d47a1); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; margin: 0 auto 15px; box-shadow: 0 4px 10px rgba(25, 118, 210, 0.3); }
+        .p-name { font-size: 22px; font-weight: 800; color: #1a237e; }
+        .p-id { font-size: 12px; color: #90a4ae; font-weight: bold; margin-top: 4px; word-break: break-all; padding: 0 10px; }
+        .edit-badge { display: inline-block; background: #e3f2fd; color: #1976d2; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        .edit-badge:active { transform: scale(0.95); }
+        
+        /* Menu List */
+        .menu-list { margin: 0 20px; display: grid; gap: 12px; }
+        .m-item { background: white; padding: 18px 20px; border-radius: 18px; border: 1px solid #edf2f7; font-size: 15px; font-weight: 700; color: #455a64; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .m-item:active { background: #f8f9fb; transform: scale(0.98); }
+        .m-left { display: flex; align-items: center; gap: 12px; }
+        .m-icon { width: 36px; height: 36px; background: #f0f4f8; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #1976d2; }
+        .logout-btn { margin: 30px 20px; padding: 18px; background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; border-radius: 18px; font-size: 15px; font-weight: bold; text-align: center; cursor: pointer; transition: 0.2s; }
+        .logout-btn:active { transform: scale(0.98); }
+        
+        /* Modern Full-Screen Overlays */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f7f9; z-index: 2000; display: none; flex-direction: column; animation: slideIn 0.3s ease forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        
+        .overlay-header { background: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 10px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 2010; }
+        .overlay-header h2 { font-size: 16px; color: #1a237e; font-weight: 800; }
+        .close-btn { font-size: 14px; font-weight: bold; color: #90a4ae; cursor: pointer; padding: 5px; }
+        .overlay-content { flex: 1; overflow-y: auto; padding: 20px; }
+        
+        /* Form Inputs */
+        .input-group { margin-bottom: 16px; }
+        .input-group label { font-size: 12px; color: #78909c; font-weight: 800; display: block; margin-bottom: 6px; text-transform: uppercase; }
+        .input-group input { width: 100%; padding: 16px; background: white; border: 1px solid #edf2f7; border-radius: 14px; font-size: 15px; font-weight: 700; color: #263238; outline: none; transition: border 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.01); }
+        .input-group input:focus { border-color: #1976d2; }
+        .save-btn { width: 100%; padding: 18px; background: #1976d2; color: white; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3); }
+        
+        /* Transaction UI */
+        .tx-card { background: white; padding: 16px; border-radius: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #edf2f7; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border-left: 5px solid #ccc; }
+        .tx-dep { border-left-color: #00c087; }
+        .tx-wd { border-left-color: #f84960; }
+        .tx-info h4 { font-size: 15px; color: #1a237e; font-weight: 800; margin-bottom: 4px; }
+        .tx-info p { font-size: 11px; color: #90a4ae; font-weight: 600; }
+        .tx-amt { text-align: right; }
+        .tx-amt h3 { font-size: 16px; font-weight: 900; }
+        .status-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-top: 4px; }
+        .st-pending { background: #fff3e0; color: #f57c00; }
+        .st-approved { background: #e8f5e9; color: #2e7d32; }
+        .st-rejected { background: #ffebee; color: #d32f2f; }
+        
+        /* Modern Chat UI */
+        .chat-area { display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px; }
+        .chat-bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; position: relative; font-weight: 500; }
+        .chat-user { background: #1976d2; color: white; align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 2px 10px rgba(25, 118, 210, 0.2); }
+        .chat-admin { background: white; color: #263238; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #edf2f7; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .chat-time { font-size: 9px; opacity: 0.7; margin-top: 4px; display: block; text-align: right; }
+        
+        .chat-input-area { background: white; padding: 15px 20px; border-top: 1px solid #edf2f7; display: flex; gap: 10px; align-items: center; position: sticky; bottom: 0; padding-bottom: calc(15px + env(safe-area-inset-bottom)); }
+        .chat-input-area input { flex: 1; padding: 14px 18px; border-radius: 20px; border: 1px solid #edf2f7; background: #f8f9fb; font-size: 14px; outline: none; }
+        .chat-send { background: #1976d2; color: white; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(25, 118, 210, 0.3); }
+        
+        /* Bottom Nav */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #f0f0f0; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { text-align: center; color: #b0bec5; font-size: 11px; text-decoration: none; flex: 1; display: flex; flex-direction: column; align-items: center; font-weight: 600; }
+        .nav-item.active { color: #1976d2; }
+        .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="top-nav"><h1>প্রোফাইল সেন্টার</h1></div>
+    
+    <div class="profile-card">
+        <div class="avatar" id="avatar-initial">U</div>
+        <div class="p-name" id="user-display">লোড হচ্ছে...</div>
+        <div class="p-id" id="user-id-display">ID: ...</div>
+        <div class="edit-badge" onclick="editUsername()">✎ ইউজারনেম পরিবর্তন</div>
+    </div>
+    
+    <div class="menu-list">
+        <div class="m-item" onclick="openOverlay('info')">
+            <div class="m-left">
+                <div class="m-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                <span>প্রোফাইল ইনফরমেশন</span>
+            </div>
+            <span style="color:#90a4ae; font-weight:bold;">→</span>
+        </div>
+        
+        <div class="m-item" onclick="openOverlay('tx')">
+            <div class="m-left">
+                <div class="m-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg></div>
+                <span>লেনদেনের ইতিহাস</span>
+            </div>
+            <span style="color:#90a4ae; font-weight:bold;">→</span>
+        </div>
+        
+        <div class="m-item" onclick="openOverlay('chat')">
+            <div class="m-left">
+                <div class="m-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg></div>
+                <span>লাইভ সাপোর্ট চ্যাট</span>
+            </div>
+            <span style="color:#00c087; font-weight:bold; font-size:12px;">● Online</span>
+        </div>
+    </div>
+    
+    <div class="logout-btn" onclick="logout()">লগআউট করুন</div>
+    
+    <div id="info-overlay" class="overlay">
+        <div class="overlay-header">
+            <h2>ব্যক্তিগত তথ্য</h2>
+            <div class="close-btn" onclick="closeOverlay('info')">বন্ধ করুন</div>
+        </div>
+        <div class="overlay-content">
+            <div class="input-group"><label>পুরো নাম</label><input type="text" id="in-name" placeholder="আপনার সম্পূর্ণ নাম"></div>
+            <div class="input-group"><label>ফোন নম্বর</label><input type="tel" id="in-phone" placeholder="01XXXXXXXXX"></div>
+            <div class="input-group"><label>টেলিগ্রাম আইডি</label><input type="text" id="in-tele" placeholder="@username"></div>
+            <div class="input-group"><label>জন্ম তারিখ</label><input type="date" id="in-dob"></div>
+            <div class="input-group"><label>বর্তমান ঠিকানা</label><input type="text" id="in-addr" placeholder="আপনার ঠিকানা"></div>
+            <div class="input-group"><label>NID / স্মার্ট কার্ড নম্বর</label><input type="text" id="in-nid" placeholder="জাতীয় পরিচয়পত্র নম্বর"></div>
+            <button class="save-btn" onclick="saveProfile()">তথ্য আপডেট করুন</button>
+        </div>
+    </div>
+    
+    <div id="tx-overlay" class="overlay">
+        <div class="overlay-header">
+            <h2>লেনদেনের ইতিহাস</h2>
+            <div class="close-btn" onclick="closeOverlay('tx')">বন্ধ করুন</div>
+        </div>
+        <div class="overlay-content" id="tx-list">
+            <p style="text-align:center; color:#90a4ae; margin-top:20px;">লোড হচ্ছে...</p>
+        </div>
+    </div>
+    
+    <div id="chat-overlay" class="overlay">
+        <div class="overlay-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:30px; height:30px; background:#1976d2; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:bold;">A</div>
+                <div>
+                    <h2 style="font-size:14px;">BSB সাপোর্ট এজেন্ট</h2>
+                    <span style="font-size:10px; color:#00c087; font-weight:bold;">● অনলাইনে আছেন</span>
+                </div>
+            </div>
+            <div class="close-btn" onclick="closeOverlay('chat')">বন্ধ করুন</div>
+        </div>
+        <div class="overlay-content chat-area" id="chat-messages">
+            </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="আপনার প্রশ্নটি লিখুন..." onkeypress="if(event.key === 'Enter') sendMessage()">
+            <button class="chat-send" onclick="sendMessage()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg>
+            </button>
+        </div>
+    </div>
+    
+    <div class="bottom-nav">
+        <a href="dashboard.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> হোম</a>
+        <a href="portfolio.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19C21,20.1 20.1,21 19,21H5C3.9,21 3,20.1 3,19V5C3,3.9 3.9,3 5,3H19C20.1,3 21,3.9 21,5V6H12C10.9,6 10,6.9 10,8V16C10,17.1 10.9,18 12,18H21M12,16H22V8H12V16M16,13.5C15.17,13.5 14.5,12.83 14.5,12C14.5,11.17 15.17,10.5 16,10.5C16.83,10.5 17.5,11.17 17.5,12C17.5,12.83 16.83,13.5 16,13.5Z"/></svg> পোর্টফোলিও</a>
+        <a href="wallet.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V11H13V13H21V18M23,13H15V11H23V13Z"/></svg> ওয়ালেট</a>
+        <a href="profile.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg> প্রোফাইল</a>
+    </div>
+
+    <script>
+        const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
+        const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
+        const supabase = window.supabase.createClient(S_URL, S_KEY);
+
+        let SESSION_USER = localStorage.getItem('BSB_SESSION'); 
+        let chatInterval;
+
+        window.onload = async () => {
+            if (!SESSION_USER) {
+                window.location.replace("index.html"); 
+                return;
+            }
+
+            // 🔥 THE GHOST EXTERMINATOR 🔥
+            const { data, error } = await supabase.from('profiles').select('user_id').eq('user_id', SESSION_USER).maybeSingle();
+            
+            if (!data || error) {
+                localStorage.clear();
+                window.location.replace("index.html");
+                return;
+            }
+
+            await fetchProfileData();
+        };
+
+        // UI Helpers
+        function openOverlay(id) { 
+            document.getElementById(id + '-overlay').style.display = 'flex'; 
+            if(id === 'tx') loadTransactions();
+            if(id === 'chat') {
+                loadChatMessages();
+                chatInterval = setInterval(loadChatMessages, 3000); // Live poll
+            }
+        }
+        
+        function closeOverlay(id) { 
+            document.getElementById(id + '-overlay').style.display = 'none'; 
+            if(id === 'chat') clearInterval(chatInterval);
+        }
+
+        // 1. Profile Logic
+        async function fetchProfileData() {
+            if(!SESSION_USER) return;
+            const { data, error } = await supabase.from('profiles').select('*').eq('user_id', SESSION_USER).single();
+            
+            if(error) { console.error("Profile load error", error); return; }
+            
+            if(data) {
+                document.getElementById('user-display').innerText = data.username || "ইউজার";
+                document.getElementById('user-id-display').innerText = "ID: " + data.user_id;
+                document.getElementById('avatar-initial').innerText = (data.username ? data.username[0] : "U").toUpperCase();
+                
+                // Form population
+                document.getElementById('in-name').value = data.full_name || '';
+                document.getElementById('in-phone').value = data.phone_number || '';
+                document.getElementById('in-tele').value = data.telegram_id || '';
+                document.getElementById('in-dob').value = data.date_of_birth || '';
+                document.getElementById('in-addr').value = data.address || '';
+                document.getElementById('in-nid').value = data.nid_number || '';
+            }
+        }
+
+        async function saveProfile() {
+            const payload = {
+                full_name: document.getElementById('in-name').value,
+                phone_number: document.getElementById('in-phone').value,
+                telegram_id: document.getElementById('in-tele').value,
+                date_of_birth: document.getElementById('in-dob').value,
+                address: document.getElementById('in-addr').value,
+                nid_number: document.getElementById('in-nid').value
+            };
+            
+            const { error } = await supabase.from('profiles').update(payload).eq('user_id', SESSION_USER);
+            if(!error) {
+                alert("আপনার প্রোফাইল তথ্য সফলভাবে আপডেট হয়েছে!");
+                closeOverlay('info');
+            } else {
+                alert("ত্রুটি: তথ্য সেভ করা যায়নি।");
+            }
+        }
+
+        async function editUsername() {
+            const { data } = await supabase.from('profiles').select('username_edit_count, last_edit_date').eq('user_id', SESSION_USER).single();
+            
+            if(data) {
+                const lastDate = new Date(data.last_edit_date);
+                const diffDays = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+                
+                // Enforce 60-day rule
+                if(data.username_edit_count >= 2 && diffDays < 60) {
+                    alert("দুঃখিত, আপনি ৬০ দিনের মধ্যে সর্বোচ্চ ২ বার ইউজারনেম পরিবর্তন করতে পারবেন।");
+                    return;
+                }
+                
+                let newUsername = prompt("নতুন ইউজারনেম লিখুন:");
+                if(newUsername && newUsername.trim() !== "") {
+                    const newCount = (diffDays >= 60) ? 1 : (data.username_edit_count + 1);
+                    
+                    const { error } = await supabase.from('profiles').update({ 
+                        username: newUsername.trim(), 
+                        username_edit_count: newCount,
+                        last_edit_date: new Date()
+                    }).eq('user_id', SESSION_USER);
+                    
+                    if(!error) {
+                        alert("ইউজারনেম পরিবর্তন সফল হয়েছে!");
+                        fetchProfileData();
+                    } else {
+                        alert("এই ইউজারনেমটি ইতিমধ্যে ব্যবহৃত হচ্ছে অথবা কোনো ত্রুটি হয়েছে।");
+                    }
+                }
+            }
+        }
+
+        // 2. Transaction Logic
+        async function loadTransactions() {
+            const { data, error } = await supabase.from('wallet_tx')
+                .select('*').eq('user_id', SESSION_USER).order('created_at', {ascending: false});
+            
+            if(error || !data || data.length === 0) {
+                document.getElementById('tx-list').innerHTML = '<p style="text-align:center; color:#90a4ae; margin-top:20px;">কোনো লেনদেনের তথ্য পাওয়া যায়নি।</p>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(tx => {
+                const date = new Date(tx.created_at).toLocaleString('bn-BD', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+                const typeName = tx.type === 'DEPOSIT' ? 'ডিপোজিট' : 'উত্তোলন';
+                const typeClass = tx.type === 'DEPOSIT' ? 'tx-dep' : 'tx-wd';
+                
+                let statusName, statusClass;
+                if(tx.status === 'PENDING') { statusName = 'পেন্ডিং'; statusClass = 'st-pending'; }
+                else if(tx.status === 'APPROVED') { statusName = 'সফল'; statusClass = 'st-approved'; }
+                else { statusName = 'বাতিল'; statusClass = 'st-rejected'; }
+
+                html += `
+                <div class="tx-card ${typeClass}">
+                    <div class="tx-info">
+                        <h4>${typeName}</h4>
+                        <p>${date}</p>
+                        <p style="margin-top:4px">চার্জ/ফি: ৳${(tx.fee || 0).toFixed(2)}</p>
+                        ${tx.bkash_number ? `<p>bKash: ${tx.bkash_number}</p>` : ''}
+                    </div>
+                    <div class="tx-amt">
+                        <h3 class="${tx.type === 'DEPOSIT' ? 'green' : 'red'}">${tx.type === 'DEPOSIT' ? '+' : '-'} ৳${tx.amount.toFixed(2)}</h3>
+                        <span class="status-badge ${statusClass}">${statusName}</span>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('tx-list').innerHTML = html;
+        }
+
+        // 3. Live Chat Logic
+        async function loadChatMessages() {
+            const { data, error } = await supabase.from('support_messages')
+                .select('*').eq('user_id', SESSION_USER).order('created_at', {ascending: true});
+            
+            if(error) return;
+
+            let html = '';
+            data.forEach(msg => {
+                const time = new Date(msg.created_at).toLocaleTimeString('bn-BD', {hour:'2-digit', minute:'2-digit'});
+                const isUser = msg.sender === 'USER';
+                
+                html += `
+                <div class="chat-bubble ${isUser ? 'chat-user' : 'chat-admin'}">
+                    ${msg.message}
+                    <span class="chat-time" style="${isUser ? 'color:#e3f2fd' : 'color:#90a4ae'}">${time}</span>
+                </div>`;
+            });
+
+            const chatBox = document.getElementById('chat-messages');
+            const isScrolledToBottom = chatBox.scrollHeight - chatBox.clientHeight <= chatBox.scrollTop + 50;
+            
+            if (chatBox.innerHTML !== html) {
+                chatBox.innerHTML = html || '<p style="text-align:center; color:#90a4ae; font-size:12px; margin-top:20px;">আপনাকে কীভাবে সাহায্য করতে পারি?</p>';
+                if (isScrolledToBottom || html.length > 0) {
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+
+            input.value = ''; 
+            
+            const { error } = await supabase.from('support_messages').insert([{
+                user_id: SESSION_USER,
+                sender: 'USER',
+                message: msg
+            }]);
+
+            if(!error) {
+                loadChatMessages(); 
+            } else {
+                alert("মেসেজ পাঠানো ব্যর্থ হয়েছে!");
+            }
+        }
+
+        function logout() {
+            if(confirm("আপনি কি নিশ্চিত লগআউট করতে চান?")) {
+                localStorage.clear();
+                window.location.replace('index.html');
+            }
+        }
+    </script>
+</body>
+</html>

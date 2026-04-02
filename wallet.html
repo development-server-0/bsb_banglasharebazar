@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BSB - Wallet Pro</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: #f4f7f9; min-height: 100dvh; padding-bottom: 100px; color: #263238; }
+        
+        .top-nav { background: #ffffff; padding: 15px 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 15px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 100; }
+        .top-nav h1 { font-size: 18px; color: #1a237e; font-weight: 800; }
+        
+        .balance-card { background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%); margin: 20px; padding: 30px; border-radius: 28px; color: white; box-shadow: 0 12px 30px rgba(25, 118, 210, 0.25); text-align: center; }
+        .balance-card span { font-size: 13px; opacity: 0.9; font-weight: 500; letter-spacing: 0.5px; }
+        .balance-card h2 { font-size: 36px; margin-top: 8px; font-weight: 800; }
+        
+        .tabs { display: flex; margin: 0 20px 20px; background: white; border-radius: 15px; padding: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #edf2f7; }
+        .tab { flex: 1; text-align: center; padding: 14px; font-weight: bold; color: #90a4ae; cursor: pointer; border-radius: 12px; transition: 0.3s; font-size: 14px; }
+        .tab.active { background: #1976d2; color: white; box-shadow: 0 4px 10px rgba(25, 118, 210, 0.2); }
+        
+        .form-box { background: white; margin: 0 20px 20px; padding: 25px; border-radius: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #edf2f7; display: none; }
+        .form-box.active { display: block; animation: slideUp 0.4s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; color: #78909c; font-size: 11px; margin-bottom: 8px; font-weight: 800; text-transform: uppercase; }
+        .input-group input, .input-group select { width: 100%; padding: 16px; background: #f8f9fb; border: 1px solid #f1f3f5; border-radius: 14px; font-size: 16px; font-weight: bold; color: #1a237e; outline: none; transition: 0.2s; }
+        .input-group input:focus { border-color: #1976d2; background: white; }
+        
+        .fee-info { background: #fff1f0; padding: 18px; border-radius: 15px; margin-bottom: 20px; border: 1px solid #ffa39e; }
+        .fee-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; color: #455a64; font-weight: 600; }
+        .total-row { font-weight: 800; color: #1a237e; border-top: 1px solid #ffa39e; padding-top: 10px; margin-top: 4px; font-size: 14px; }
+        
+        .action-btn { width: 100%; padding: 18px; border-radius: 16px; border: none; font-size: 16px; font-weight: bold; color: white; cursor: pointer; transition: 0.2s; }
+        .action-btn:active { transform: scale(0.97); }
+        .btn-bkash { background: #e2136e; }
+        .btn-wd { background: #1976d2; }
+        
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #f0f0f0; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { text-align: center; color: #b0bec5; font-size: 11px; text-decoration: none; flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .nav-item.active { color: #1976d2; }
+        .nav-item svg { width: 26px; height: 26px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="top-nav"><h1>ওয়ালেট প্যানেল</h1></div>
+    <div class="balance-card">
+        <span>আপনার বর্তমান ব্যালেন্স</span>
+        <h2 id="ui-balance">৳ 0.00</h2>
+    </div>
+    <div class="tabs">
+        <div class="tab active" id="tab-dep" onclick="switchTab('deposit')">ডিপোজিট</div>
+        <div class="tab" id="tab-wd" onclick="switchTab('withdraw')">উত্তোলন</div>
+    </div>
+    <div id="deposit-content" class="form-box active">
+        <div class="input-group">
+            <label>ডিপোজিট পরিমাণ (৳) - সর্বনিম্ন ৫০০</label>
+            <input type="number" id="dep-amt" placeholder="500">
+        </div>
+        <button class="action-btn btn-bkash" onclick="handleDeposit()">bKash পেমেন্ট গেটওয়ে</button>
+        <p style="text-align:center; font-size:11px; color:#90a4ae; margin-top:15px;">পেমেন্ট সম্পূর্ণ করার পর ব্যালেন্স যোগ হতে ৩০ মিনিট সময় লাগতে পারে।</p>
+    </div>
+    <div id="withdraw-content" class="form-box">
+        <div class="input-group">
+            <label>বিকাশ পার্সোনাল নম্বর</label>
+            <input type="text" id="wd-num" placeholder="01XXXXXXXXX">
+        </div>
+        <div class="input-group">
+            <label>উত্তোলনের পরিমাণ (৳) - সর্বনিম্ন ৫০০০</label>
+            <input type="number" id="wd-amt" placeholder="5000" oninput="runFeeEngine()">
+        </div>
+        <div class="input-group">
+            <label>উত্তোলনের ধরন</label>
+            <select id="wd-speed" onchange="runFeeEngine()">
+                <option value="10min">ইনস্ট্যান্ট (১০ মিনিট) - ৪% ফি</option>
+                <option value="24hr">স্ট্যান্ডার্ড (২৪ ঘণ্টা) - ২% ফি</option>
+            </select>
+        </div>
+        <div class="fee-info" id="fee-preview" style="display:none;">
+            <div class="fee-row"><span>সাপ্তাহিক লিমিট চার্জ (৫%):</span><span id="f-limit">৳ 0.00</span></div>
+            <div class="fee-row"><span>ট্রানজ্যাকশন ফি:</span><span id="f-speed">৳ 0.00</span></div>
+            <div class="fee-row total-row"><span>মোট কর্তন করা হবে:</span><span id="f-total">৳ 0.00</span></div>
+        </div>
+        <button class="action-btn btn-wd" onclick="handleWithdraw()">উত্তোলন রিকোয়েস্ট পাঠান</button>
+    </div>
+    <div class="bottom-nav">
+        <a href="dashboard.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> হোম</a>
+        <a href="portfolio.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19C21,20.1 20.1,21 19,21H5C3.9,21 3,20.1 3,19V5C3,3.9 3.9,3 5,3H19C20.1,3 21,3.9 21,5V6H12C10.9,6 10,6.9 10,8V16C10,17.1 10.9,18 12,18H21M12,16H22V8H12V16M16,13.5C15.17,13.5 14.5,12.83 14.5,12C14.5,11.17 15.17,10.5 16,10.5C16.83,10.5 17.5,11.17 17.5,12C17.5,12.83 16.83,13.5 16,13.5Z"/></svg> পোর্টফোলিও</a>
+        <a href="wallet.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V11H13V13H21V18M23,13H15V11H23V13Z"/></svg> ওয়ালেট</a>
+        <a href="profile.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg> প্রোফাইল</a>
+    </div>
+
+    <script>
+        const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
+        const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
+        const supabase = window.supabase.createClient(S_URL, S_KEY);
+
+        // 🔥 CUSTOM AUTH GUARD
+        let SESSION_USER = localStorage.getItem('BSB_SESSION'); 
+
+        let currentUnifiedBal = 0;
+        let withdrawalCountThisWeek = 0;
+
+        window.onload = async () => {
+            if (!SESSION_USER) {
+                window.location.replace("index.html"); 
+                return;
+            }
+
+            // ঘোস্ট ইউজার চেক (যদি সেশন থাকে কিন্তু ডাটাবেসে ইউজার না থাকে)
+            const { data: userExists } = await supabase.from('profiles').select('user_id').eq('user_id', SESSION_USER).maybeSingle();
+            if(!userExists) {
+                localStorage.clear();
+                window.location.replace("index.html");
+                return;
+            }
+
+            await syncAllData();
+            setInterval(syncAllData, 10000); 
+        };
+
+        async function syncAllData() {
+            if(!SESSION_USER) return;
+
+            // 1. Get Base Balance (FIXED: ডিফল্ট ০)
+            const { data: profile } = await supabase.from('profiles').select('current_balance').eq('user_id', SESSION_USER).single();
+            let base = profile ? parseFloat(profile.current_balance) : 0;
+
+            // 2. Get Trade Impact
+            const { data: trades } = await supabase.from('trades').select('*').eq('user_id', SESSION_USER);
+            let tradeImpact = 0;
+            trades?.forEach(t => {
+                let fee = t.platform_fee || (t.total_amount * 0.005);
+                if(t.type === 'BUY') tradeImpact -= (t.total_amount + fee);
+                else if(t.type === 'SELL') tradeImpact += (t.total_amount - fee);
+            });
+
+            // 3. Get Approved Wallet Txs
+            const { data: wallet } = await supabase.from('wallet_tx').select('*').eq('user_id', SESSION_USER).eq('status', 'APPROVED');
+            let walletImpact = 0;
+            wallet?.forEach(w => {
+                if(w.type === 'DEPOSIT') walletImpact += w.amount;
+                else if(w.type === 'WITHDRAWAL') walletImpact -= (w.amount + w.fee);
+            });
+
+            currentUnifiedBal = base + tradeImpact + walletImpact;
+            document.getElementById('ui-balance').innerText = "৳ " + currentUnifiedBal.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+            // 4. Check Weekly Limit
+            const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            const { data: recentWds } = await supabase.from('wallet_tx')
+                .select('id').eq('user_id', SESSION_USER).eq('type', 'WITHDRAWAL')
+                .gt('created_at', oneWeekAgo.toISOString());
+            withdrawalCountThisWeek = recentWds?.length || 0;
+        }
+
+        function switchTab(type) {
+            document.getElementById('deposit-content').classList.toggle('active', type === 'deposit');
+            document.getElementById('withdraw-content').classList.toggle('active', type === 'withdraw');
+            document.getElementById('tab-dep').classList.toggle('active', type === 'deposit');
+            document.getElementById('tab-wd').classList.toggle('active', type === 'withdraw');
+        }
+
+        function runFeeEngine() {
+            const amt = parseFloat(document.getElementById('wd-amt').value) || 0;
+            if(amt <= 0) { document.getElementById('fee-preview').style.display = 'none'; return; }
+            const limitFee = withdrawalCountThisWeek > 0 ? (amt * 0.05) : 0;
+            const speed = document.getElementById('wd-speed').value;
+            const speedFee = amt * (speed === '10min' ? 0.04 : 0.02);
+            const totalDeduct = amt + limitFee + speedFee;
+            document.getElementById('f-limit').innerText = "৳ " + limitFee.toFixed(2);
+            document.getElementById('f-speed').innerText = "৳ " + speedFee.toFixed(2);
+            document.getElementById('f-total').innerText = "৳ " + totalDeduct.toFixed(2);
+            document.getElementById('fee-preview').style.display = 'block';
+        }
+
+        async function handleDeposit() {
+            if(!SESSION_USER) return;
+            const amt = parseFloat(document.getElementById('dep-amt').value);
+            if(amt < 500 || isNaN(amt)) return alert("সর্বনিম্ন ৫০০ টাকা ডিপোজিট করুন।");
+            
+            await supabase.from('wallet_tx').insert([{
+                user_id: SESSION_USER, type: 'DEPOSIT', amount: amt, status: 'PENDING'
+            }]);
+            window.location.href = "https://shop.bkash.com/max-top01992871138/paymentlink";
+        }
+
+        async function handleWithdraw() {
+            if(!SESSION_USER) return;
+            const amt = parseFloat(document.getElementById('wd-amt').value);
+            const num = document.getElementById('wd-num').value;
+            const speed = document.getElementById('wd-speed').value;
+
+            if(isNaN(amt) || amt < 5000) return alert("সর্বনিম্ন ৫,০০০ টাকা উত্তোলন করা যাবে।");
+            if(!num || num.length < 11) return alert("সঠিক বিকাশ নম্বর দিন।");
+
+            const limitFee = withdrawalCountThisWeek > 0 ? (amt * 0.05) : 0;
+            const speedFee = amt * (speed === '10min' ? 0.04 : 0.02);
+            const totalRequired = amt + limitFee + speedFee;
+
+            if(totalRequired > currentUnifiedBal) return alert("অপর্যাপ্ত ব্যালেন্স! চার্জসহ মোট প্রয়োজন ৳" + totalRequired.toFixed(2));
+
+            const { error } = await supabase.from('wallet_tx').insert([{
+                user_id: SESSION_USER,
+                type: 'WITHDRAWAL',
+                amount: amt,
+                fee: limitFee + speedFee,
+                bkash_number: num,
+                withdraw_time: speed,
+                status: 'PENDING'
+            }]);
+
+            if(!error) {
+                alert("উত্তোলন সফলভাবে সাবমিট করা হয়েছে! অ্যাডমিন অনুমোদনের জন্য অপেক্ষা করুন।");
+                location.reload();
+            } else {
+                alert("ত্রুটি: " + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
