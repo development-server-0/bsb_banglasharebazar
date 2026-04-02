@@ -214,6 +214,9 @@
                 window.location.replace("index.html"); 
                 return;
             }
+            
+            // Add this inside window.onload in details.html to track the visit
+supabase.from('page_visits').insert([{ user_id: SESSION_USER, business_name: targetName }]).then();
 
             // GHOST EXTERMINATOR CHECK
             const { data: userExists } = await supabase.from('profiles').select('user_id').eq('user_id', SESSION_USER).maybeSingle();

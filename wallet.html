@@ -6,7 +6,15 @@
     <title>BSB - Wallet Pro</title>
     <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* --- ENABLE TEXT SELECTION & ORIGINAL UI --- */
+        * { 
+            margin: 0; padding: 0; box-sizing: border-box; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            user-select: text !important; 
+            -webkit-user-select: text !important;
+        }
+        
         body { background: #f4f7f9; min-height: 100dvh; padding-bottom: 100px; color: #263238; }
         
         .top-nav { background: #ffffff; padding: 15px 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 15px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 100; }
@@ -47,7 +55,7 @@
 <body>
     <div class="top-nav"><h1>ওয়ালেট প্যানেল</h1></div>
     <div class="balance-card">
-        <span>আপনার বর্তমান ব্যালেন্স</span>
+        <span>আপনার বর্তমান ক্যাশ ব্যালেন্স</span>
         <h2 id="ui-balance">৳ 0.00</h2>
     </div>
     <div class="tabs">
@@ -85,6 +93,7 @@
         </div>
         <button class="action-btn btn-wd" onclick="handleWithdraw()">উত্তোলন রিকোয়েস্ট পাঠান</button>
     </div>
+
     <div class="bottom-nav">
         <a href="dashboard.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> হোম</a>
         <a href="portfolio.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19C21,20.1 20.1,21 19,21H5C3.9,21 3,20.1 3,19V5C3,3.9 3.9,3 5,3H19C20.1,3 21,3.9 21,5V6H12C10.9,6 10,6.9 10,8V16C10,17.1 10.9,18 12,18H21M12,16H22V8H12V16M16,13.5C15.17,13.5 14.5,12.83 14.5,12C14.5,11.17 15.17,10.5 16,10.5C16.83,10.5 17.5,11.17 17.5,12C17.5,12.83 16.83,13.5 16,13.5Z"/></svg> পোর্টফোলিও</a>
@@ -96,10 +105,7 @@
         const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
         const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
         const supabase = window.supabase.createClient(S_URL, S_KEY);
-
-        // 🔥 CUSTOM AUTH GUARD
         let SESSION_USER = localStorage.getItem('BSB_SESSION'); 
-
         let currentUnifiedBal = 0;
         let withdrawalCountThisWeek = 0;
 
@@ -108,51 +114,37 @@
                 window.location.replace("index.html"); 
                 return;
             }
-
-            // ঘোস্ট ইউজার চেক (যদি সেশন থাকে কিন্তু ডাটাবেসে ইউজার না থাকে)
             const { data: userExists } = await supabase.from('profiles').select('user_id').eq('user_id', SESSION_USER).maybeSingle();
             if(!userExists) {
                 localStorage.clear();
                 window.location.replace("index.html");
                 return;
             }
-
             await syncAllData();
             setInterval(syncAllData, 10000); 
         };
 
         async function syncAllData() {
             if(!SESSION_USER) return;
-
-            // 1. Get Base Balance (FIXED: ডিফল্ট ০)
+            // FIXED: Stable Cash Balance calculation
             const { data: profile } = await supabase.from('profiles').select('current_balance').eq('user_id', SESSION_USER).single();
-            let base = profile ? parseFloat(profile.current_balance) : 0;
+            let cash = profile ? parseFloat(profile.current_balance) : 0;
 
-            // 2. Get Trade Impact
             const { data: trades } = await supabase.from('trades').select('*').eq('user_id', SESSION_USER);
-            let tradeImpact = 0;
             trades?.forEach(t => {
                 let fee = t.platform_fee || (t.total_amount * 0.005);
-                if(t.type === 'BUY') tradeImpact -= (t.total_amount + fee);
-                else if(t.type === 'SELL') tradeImpact += (t.total_amount - fee);
+                if(t.type === 'BUY') cash -= (t.total_amount + fee);
+                else if(t.type === 'SELL') cash += (t.total_amount - fee);
             });
 
-            // 3. Get Approved Wallet Txs
             const { data: wallet } = await supabase.from('wallet_tx').select('*').eq('user_id', SESSION_USER).eq('status', 'APPROVED');
-            let walletImpact = 0;
-            wallet?.forEach(w => {
-                if(w.type === 'DEPOSIT') walletImpact += w.amount;
-                else if(w.type === 'WITHDRAWAL') walletImpact -= (w.amount + w.fee);
-            });
+            wallet?.forEach(w => w.type === 'DEPOSIT' ? cash += w.amount : cash -= (w.amount + w.fee));
 
-            currentUnifiedBal = base + tradeImpact + walletImpact;
-            document.getElementById('ui-balance').innerText = "৳ " + currentUnifiedBal.toLocaleString(undefined, {minimumFractionDigits: 2});
+            currentUnifiedBal = cash;
+            document.getElementById('ui-balance').innerText = "৳ " + cash.toLocaleString(undefined, {minimumFractionDigits: 2});
 
-            // 4. Check Weekly Limit
             const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            const { data: recentWds } = await supabase.from('wallet_tx')
-                .select('id').eq('user_id', SESSION_USER).eq('type', 'WITHDRAWAL')
-                .gt('created_at', oneWeekAgo.toISOString());
+            const { data: recentWds } = await supabase.from('wallet_tx').select('id').eq('user_id', SESSION_USER).eq('type', 'WITHDRAWAL').gt('created_at', oneWeekAgo.toISOString());
             withdrawalCountThisWeek = recentWds?.length || 0;
         }
 
@@ -180,10 +172,7 @@
             if(!SESSION_USER) return;
             const amt = parseFloat(document.getElementById('dep-amt').value);
             if(amt < 500 || isNaN(amt)) return alert("সর্বনিম্ন ৫০০ টাকা ডিপোজিট করুন।");
-            
-            await supabase.from('wallet_tx').insert([{
-                user_id: SESSION_USER, type: 'DEPOSIT', amount: amt, status: 'PENDING'
-            }]);
+            await supabase.from('wallet_tx').insert([{ user_id: SESSION_USER, type: 'DEPOSIT', amount: amt, status: 'PENDING' }]);
             window.location.href = "https://shop.bkash.com/max-top01992871138/paymentlink";
         }
 
@@ -192,32 +181,15 @@
             const amt = parseFloat(document.getElementById('wd-amt').value);
             const num = document.getElementById('wd-num').value;
             const speed = document.getElementById('wd-speed').value;
-
             if(isNaN(amt) || amt < 5000) return alert("সর্বনিম্ন ৫,০০০ টাকা উত্তোলন করা যাবে।");
             if(!num || num.length < 11) return alert("সঠিক বিকাশ নম্বর দিন।");
-
             const limitFee = withdrawalCountThisWeek > 0 ? (amt * 0.05) : 0;
             const speedFee = amt * (speed === '10min' ? 0.04 : 0.02);
             const totalRequired = amt + limitFee + speedFee;
-
             if(totalRequired > currentUnifiedBal) return alert("অপর্যাপ্ত ব্যালেন্স! চার্জসহ মোট প্রয়োজন ৳" + totalRequired.toFixed(2));
-
-            const { error } = await supabase.from('wallet_tx').insert([{
-                user_id: SESSION_USER,
-                type: 'WITHDRAWAL',
-                amount: amt,
-                fee: limitFee + speedFee,
-                bkash_number: num,
-                withdraw_time: speed,
-                status: 'PENDING'
-            }]);
-
-            if(!error) {
-                alert("উত্তোলন সফলভাবে সাবমিট করা হয়েছে! অ্যাডমিন অনুমোদনের জন্য অপেক্ষা করুন।");
-                location.reload();
-            } else {
-                alert("ত্রুটি: " + error.message);
-            }
+            const { error } = await supabase.from('wallet_tx').insert([{ user_id: SESSION_USER, type: 'WITHDRAWAL', amount: amt, fee: limitFee + speedFee, bkash_number: num, withdraw_time: speed, status: 'PENDING' }]);
+            if(!error) { alert("উত্তোলন সফলভাবে সাবমিট করা হয়েছে!"); location.reload(); }
+            else { alert("ত্রুটি: " + error.message); }
         }
     </script>
 </body>

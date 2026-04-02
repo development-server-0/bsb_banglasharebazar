@@ -16,8 +16,9 @@
         .tab { flex: 1; text-align: center; padding: 12px; font-weight: bold; color: #78909c; cursor: pointer; border-radius: 11px; font-size: 13px; transition: 0.3s; }
         .tab.active { background: white; color: #1976d2; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 
-        /* Advanced Card Style */
-        .card { background: white; margin: 0 20px 15px; padding: 18px; border-radius: 22px; border: 1px solid #edf2f7; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+        .card { background: white; margin: 0 20px 15px; padding: 18px; border-radius: 22px; border: 1px solid #edf2f7; box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: 0.2s; }
+        .card:active { transform: scale(0.98); }
+        
         .c-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f4f8; padding-bottom: 10px; }
         .c-title { font-size: 15px; font-weight: 800; color: #1a237e; }
         .badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: bold; text-transform: uppercase; }
@@ -33,28 +34,32 @@
         
         .green { color: #2e7d32; } .red { color: #d32f2f; }
 
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #f0f0f0; z-index: 1000; }
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: white; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #f0f0f0; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
         .nav-item { text-align: center; color: #b0bec5; font-size: 11px; text-decoration: none; flex: 1; display: flex; flex-direction: column; align-items: center; }
         .nav-item.active { color: #1976d2; }
         .nav-item svg { width: 24px; height: 24px; margin-bottom: 4px; }
     </style>
 </head>
 <body>
-
     <div class="top-nav"><h1>পোর্টফোলিও প্রো</h1></div>
-
+    
     <div class="tabs">
         <div class="tab active" id="tab-active" onclick="toggleView('active')">অ্যাক্টিভ হোল্ডিং</div>
         <div class="tab" id="tab-history" onclick="toggleView('history')">ট্রেড হিস্ট্রি</div>
     </div>
 
-    <div id="active-list"></div>
-    <div id="history-list" style="display:none;"></div>
+    <div id="active-list">
+        <p style="text-align:center; padding:50px; color:#90a4ae;">লোড হচ্ছে...</p>
+    </div>
+
+    <div id="history-list" style="display:none;">
+        <p style="text-align:center; padding:50px; color:#90a4ae;">লোড হচ্ছে...</p>
+    </div>
 
     <div class="bottom-nav">
         <a href="dashboard.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg> হোম</a>
         <a href="portfolio.html" class="nav-item active"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19C21,20.1 20.1,21 19,21H5C3.9,21 3,20.1 3,19V5C3,3.9 3.9,3 5,3H19C20.1,3 21,3.9 21,5V6H12C10.9,6 10,6.9 10,8V16C10,17.1 10.9,18 12,18H21M12,16H22V8H12V16M16,13.5C15.17,13.5 14.5,12.83 14.5,12C14.5,11.17 15.17,10.5 16,10.5C16.83,10.5 17.5,11.17 17.5,12C17.5,12.83 16.83,13.5 16,13.5Z"/></svg> পোর্টফোলিও</a>
-        <a href="wallet.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V11H13V13H21V18M23,13H15V11H23V13Z"/></svg> ওয়ালেট</a>
+        <a href="wallet.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M21,18V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V11H13V13H21V18M23,13H15V11H23V13Z"/></svg> ওয়ালেট</a>
         <a href="profile.html" class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/></svg> প্রোফাইল</a>
     </div>
 
@@ -62,68 +67,90 @@
         const S_URL = 'https://jdjgqdodhpcthhxbxhrt.supabase.co';
         const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkamdxZG9kaHBjdGhoeGJ4aHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4OTE0MDQsImV4cCI6MjA5MDQ2NzQwNH0.w7UXHHmNMBBmQwj0A34j-tHMMmQIbumkqvX99H8yoyg';
         const supabase = window.supabase.createClient(S_URL, S_KEY);
-        const SESSION_USER = "admin_user";
 
-        window.onload = loadPortfolio;
+        // 🔥 USE AUTH SESSION INSTEAD OF admin_user 🔥
+        const SESSION_USER = localStorage.getItem('BSB_SESSION');
+
+        window.onload = async () => {
+            if (!SESSION_USER) {
+                window.location.replace("index.html");
+                return;
+            }
+            await loadPortfolio();
+        };
 
         async function loadPortfolio() {
+            // 1. Get Live Prices
             const { data: biz } = await supabase.from('businesses').select('name, live_price');
-            const priceMap = {}; biz?.forEach(b => priceMap[b.name] = b.live_price);
+            const priceMap = {}; 
+            biz?.forEach(b => priceMap[b.name] = b.live_price);
 
-            const { data: trades } = await supabase.from('trades').select('*').eq('user_id', SESSION_USER).order('created_at', {ascending: false});
+            // 2. Get User Trades (Sorted by Oldest first for calculation, then reversed for display)
+            const { data: trades, error } = await supabase.from('trades')
+                .select('*')
+                .eq('user_id', SESSION_USER)
+                .order('created_at', {ascending: true});
+
+            if(error) {
+                console.error(error);
+                return;
+            }
 
             let holdings = {};
             let historyHtml = '';
 
+            // Calculate Oldest to Newest to get proper Average Cost
             trades?.forEach(t => {
                 const fee = t.platform_fee || (t.total_amount * 0.005);
                 const currentP = priceMap[t.business_name] || 0;
-                
-                // Detailed History Calculation
-                let tradePnL = 0;
-                if(t.type === 'BUY') {
-                    tradePnL = (currentP * t.shares) - (t.total_amount + fee);
-                } else {
-                    // For Sell, PnL is based on Sell Price vs Buy Price (Calculated as profit realized)
-                    tradePnL = (t.total_amount - fee) - (t.price * t.shares); // Simplified for history
-                }
 
-                historyHtml += `
+                // Build History UI (We will reverse this later)
+                const tradePnL = t.type === 'BUY' 
+                    ? (currentP * t.shares) - (t.total_amount + fee)
+                    : (t.total_amount - fee) - (t.price * t.shares);
+
+                const hCard = `
                 <div class="card">
                     <div class="c-header">
                         <span class="c-title">${t.business_name}</span>
-                        <span class="badge ${t.type === 'BUY' ? 'badge-buy' : 'badge-sell'}">${t.type === 'BUY' ? 'ক্রয়' : 'বিক্রয়'}</span>
+                        <span class="badge ${t.type === 'BUY' ? 'badge-buy' : 'badge-sell'}">${t.type === 'BUY' ? 'ক্রয়' : 'বিক্রয়'}</span>
                     </div>
                     <div class="info-grid">
-                        <div class="i-box"><label>মোট পরিমাণ</label><span>৳ ${t.total_amount.toFixed(2)}</span></div>
-                        <div class="i-box"><label>শেয়ার সংখ্যা</label><span>${t.shares} টি</span></div>
-                        <div class="i-box"><label>প্রতি শেয়ার মূল্য</label><span>৳ ${t.price.toFixed(2)}</span></div>
-                        <div class="i-box"><label>প্ল্যাটফর্ম ফি</label><span>৳ ${fee.toFixed(2)}</span></div>
+                        <div class="i-box"><label>পরিমাণ</label><span>৳ ${t.total_amount.toFixed(2)}</span></div>
+                        <div class="i-box"><label>শেয়ার</label><span>${t.shares} টি</span></div>
+                        <div class="i-box"><label>দর</label><span>৳ ${t.price.toFixed(2)}</span></div>
+                        <div class="i-box"><label>চার্জ</label><span>৳ ${fee.toFixed(2)}</span></div>
                     </div>
                     <div class="pnl-row">
-                        <span style="font-size:11px; color:#90a4ae">${new Date(t.created_at).toLocaleDateString('bn-BD')}</span>
+                        <span style="font-size:11px; color:#90a4ae">${new Date(t.created_at).toLocaleString('bn-BD')}</span>
                         <span class="pnl-text ${tradePnL >= 0 ? 'green' : 'red'}">PnL: ${tradePnL >= 0 ? '+' : ''}৳ ${tradePnL.toFixed(2)}</span>
                     </div>
                 </div>`;
+                historyHtml = hCard + historyHtml; // Prepend to show newest first
 
-                // Logic for Active Holdings
-                if(!holdings[t.business_name]) holdings[t.business_name] = { qty: 0, cost: 0, totalBought: 0, totalSold: 0 };
+                // Core Portfolio Logic
+                if(!holdings[t.business_name]) {
+                    holdings[t.business_name] = { qty: 0, cost: 0, totalBought: 0, totalSold: 0 };
+                }
+
                 if(t.type === 'BUY') {
                     holdings[t.business_name].qty += t.shares;
                     holdings[t.business_name].cost += (t.total_amount + fee);
                     holdings[t.business_name].totalBought += t.shares;
                 } else {
-                    const avgBefore = holdings[t.business_name].cost / holdings[t.business_name].qty;
+                    const avgBefore = holdings[t.business_name].qty > 0 ? (holdings[t.business_name].cost / holdings[t.business_name].qty) : 0;
                     holdings[t.business_name].qty -= t.shares;
                     holdings[t.business_name].cost -= (t.shares * avgBefore);
                     holdings[t.business_name].totalSold += t.shares;
                 }
             });
 
+            // Generate Active Holdings UI
             let activeHtml = '';
             for(let name in holdings) {
-                if(holdings[name].qty <= 0) continue;
                 const h = holdings[name];
+                if(h.qty <= 0) continue; // Only show if user owns shares
+
                 const live = priceMap[name] || 0;
                 const currentVal = h.qty * live;
                 const pnl = currentVal - h.cost;
@@ -135,22 +162,20 @@
                         <span class="badge badge-buy">অ্যাক্টিভ</span>
                     </div>
                     <div class="info-grid">
-                        <div class="i-box"><label>মোট কেনা শেয়ার</label><span>${h.totalBought} টি</span></div>
-                        <div class="i-box"><label>মোট বিক্রি শেয়ার</label><span>${h.totalSold} টি</span></div>
-                        <div class="i-box"><label>বর্তমান শেয়ার</label><span>${h.qty} টি</span></div>
-                        <div class="i-box"><label>গড় ক্রয়মূল্য</label><span>৳ ${(h.cost/h.qty).toFixed(2)}</span></div>
-                        <div class="i-box"><label>মোট বিনিয়োগ</label><span>৳ ${h.cost.toFixed(2)}</span></div>
+                        <div class="i-box"><label>বর্তমান শেয়ার</label><span>${h.qty} টি</span></div>
+                        <div class="i-box"><label>গড় ক্রয়মূল্য</label><span>৳ ${(h.cost/h.qty).toFixed(2)}</span></div>
+                        <div class="i-box"><label>মোট বিনিয়োগ</label><span>৳ ${h.cost.toFixed(2)}</span></div>
                         <div class="i-box"><label>বর্তমান ভ্যালু</label><span>৳ ${currentVal.toFixed(2)}</span></div>
                     </div>
                     <div class="pnl-row">
-                        <span class="pnl-text" style="color:#1a237e">লাইভ প্রফিট/লস:</span>
+                        <span class="pnl-text" style="color:#1a237e">লাইভ লাভ/ক্ষতি:</span>
                         <span class="pnl-text ${pnl >= 0 ? 'green' : 'red'}">${pnl >= 0 ? '+' : ''}৳ ${pnl.toFixed(2)}</span>
                     </div>
                 </div>`;
             }
 
-            document.getElementById('active-list').innerHTML = activeHtml || '<p style="text-align:center; padding:50px">কোনো অ্যাক্টিভ শেয়ার নেই।</p>';
-            document.getElementById('history-list').innerHTML = historyHtml || '<p style="text-align:center; padding:50px">লেনদেনের কোনো ইতিহাস নেই।</p>';
+            document.getElementById('active-list').innerHTML = activeHtml || '<p style="text-align:center; padding:50px; color:#90a4ae;">আপনার কোনো অ্যাক্টিভ শেয়ার নেই।</p>';
+            document.getElementById('history-list').innerHTML = historyHtml || '<p style="text-align:center; padding:50px; color:#90a4ae;">ট্রেডিংয়ের কোনো ইতিহাস পাওয়া যায়নি।</p>';
         }
 
         function toggleView(v) {
